@@ -476,7 +476,7 @@ function renderUnit(d) {
 }
 
 // Every name and number on a unit's page can be corrected here. The server checks everything before anything is saved.
-// Names (unit, indicators, reasons) are editable for the admin and section heads; numbers also for division editors.
+// Names and wording are editable by the admin only; section heads and division editors enter numbers.
 var EDIT_FIELDS = [['received', 'الوارد'], ['finished', 'منجز'], ['transferred', 'محوّل'], ['stuck', 'عالق'], ['inProgress', 'قيد التنفيذ'], ['cancelled', 'ملغى']];
 function numInput(attrs, label, value) { return '<input class="num" type="number" min="0" step="any" inputmode="decimal" ' + attrs + ' aria-label="' + esc(label) + '" value="' + esc(value === null || value === undefined ? '' : value) + '">'; }
 function txtInput(attrs, label, value, cls) { return '<input class="txt ' + (cls || '') + '" type="text" maxlength="200" ' + attrs + ' aria-label="' + esc(label) + '" value="' + esc(value === null || value === undefined ? '' : value) + '">'; }
@@ -495,11 +495,12 @@ function editForm(d) {
   var statusOpts = function (cur) { return Object.keys(WORK_STATUS).map(function (k) { return '<option value="' + k + '"' + (cur === k ? ' selected' : '') + '>' + esc(WORK_STATUS[k]) + '</option>'; }).join(''); };
   var workRows = d.works.map(function (w) {
     var a = function (f) { return 'data-work="' + esc(w.id) + '" data-f="' + f + '"'; };
-    return '<tr><td>' + txtInput(a('title'), 'اسم العمل', w.title, 'wide') + '</td><td>' + txtInput(a('type'), 'النوع', w.type) + '</td><td>' + txtInput(a('location'), 'الموقع', w.location) + '</td>' +
+    var T = function (f, label, cls) { return N ? txtInput(a(f), label, w[f], cls) : esc(w[f] || '-'); };
+    return '<tr><td>' + T('title', 'اسم العمل', 'wide') + '</td><td>' + T('type', 'النوع') + '</td><td>' + T('location', 'الموقع') + '</td>' +
       '<td><select class="txt" ' + a('status') + ' aria-label="الحالة">' + statusOpts(w.status) + '</select></td>' +
       '<td><input class="txt" type="date" ' + a('startDate') + ' aria-label="البدء" value="' + esc(w.startDate) + '"></td><td><input class="txt" type="date" ' + a('endDate') + ' aria-label="الانتهاء" value="' + esc(w.endDate) + '"></td>' +
       '<td class="n">' + numInput(a('estimatedCost'), w.title + ': التقديرية', w.estimatedCost) + '</td><td class="n">' + numInput(a('spent'), w.title + ': المصروف', w.spent) + '</td>' +
-      '<td>' + txtInput(a('currency'), 'العملة', w.currency, 'short') + '</td></tr>' + errRow(w.id, 9);
+      '<td>' + T('currency', 'العملة', 'short') + '</td></tr>' + errRow(w.id, 9);
   }).join('');
   return '<div class="wrap narrow-block no-print"><form id="editForm" novalidate>' + unitBlock +
     '<section class="block"><div class="sec-head"><h2>المؤشرات</h2><span class="note">يجب أن يساوي مجموع الحالات عدد الوارد. اترك صف المؤشر فارغاً إذا لم تتوفر أرقامه.</span></div><div class="t-wrap"><table class="t"><thead><tr><th>المؤشر</th>' + EDIT_FIELDS.map(function (f) { return '<th class="n">' + f[1] + '</th>'; }).join('') + '</tr></thead><tbody>' + kpiRows + '</tbody></table></div></section>' +
@@ -643,7 +644,7 @@ function renderUsers(d) {
     '<div class="t-wrap"><table class="t"><thead><tr><th>الاسم</th><th>البريد</th><th>الصلاحية</th><th>الوحدات</th><th>الحالة</th><th class="n">آخر دخول</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div></section>' +
     '<div id="userForm"></div>' +
     '<section class="block"><div class="sec-head"><h2>الصلاحيات</h2></div><ul class="roles">' +
-      '<li><b>مدير النظام</b>: كل شيء، بما فيه المستخدمون.</li><li><b>رئيس قسم</b>: يعدّل أرقام وحداته ومؤشراتها.</li>' +
+      '<li><b>مدير النظام</b>: كل شيء، بما فيه الأسماء والنصوص والمستخدمون.</li><li><b>رئيس قسم</b>: يُدخل أرقام وحداته فقط.</li>' +
       '<li><b>محرر شعبة</b>: يُدخل أرقام وحداته فقط.</li><li><b>عرض فقط</b>: يرى كل الصفحات ولا يعدّل شيئاً.</li></ul></section></div>';
   document.getElementById('app').innerHTML = shell({ user: { name: d.myName, role: 'admin' }, today: '' }, 'users', body);
   wire();
