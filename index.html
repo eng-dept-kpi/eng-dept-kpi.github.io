@@ -141,6 +141,10 @@ input.num{width:5.6rem;min-height:44px;border:1px solid var(--line);border-radiu
 .ferr{color:var(--bad);font-size:.88rem;font-weight:700}
 .form-actions{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;padding-block:.9rem}
 .form-actions .sep{margin-inline-start:auto}
+.task-box{margin-top:1.2rem;border:1px solid var(--line);border-top:3px solid var(--brass);background:var(--white)}
+.task{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;padding:.8rem 1.1rem}
+.task+.task{border-top:1px solid var(--hair)}
+.task b{display:block;color:var(--pri-2);font-size:1.05rem}
 .auth{max-width:34rem;padding-block:2.2rem 3rem;display:grid;gap:1.2rem}
 .card{background:var(--white);border:1px solid var(--line);border-top:3px solid var(--brass);padding:1.4rem 1.5rem}
 .card h1{font-size:1.6rem;font-weight:800;color:var(--pri-2);margin:0 0 .3rem}
@@ -404,6 +408,19 @@ function worksBlock(t) {
     '<div><div class="v tn" style="font-size:1.02rem">' + moneyLines(t.spent) + '</div><div class="k">المصروف كما أفادت الأقسام والشعب</div></div></div></section>';
 }
 
+// A shortcut for section heads and division editors: straight to their edit screen for the open month.
+function tasksBox(d) {
+  if (!d.myTasks || !d.myTasks.length) return '';
+  return '<div class="wrap no-print"><section class="task-box" aria-label="مطلوب منك">' + d.myTasks.map(function (t, i) {
+    return '<div class="task"><div><b>أدخل أرقام ' + esc(t.periodLabel) + ' - ' + esc(t.unitName) + '</b><span class="note">' + (t.done ? 'أُدخلت أرقام ' + t.done + ' من ' + t.due + ' مؤشرات' : 'لم تُدخل أي أرقام بعد') + '</span></div>' +
+      '<button class="btn" type="button" data-task="' + i + '">إدخال الأرقام</button></div>';
+  }).join('') + '</section></div>';
+}
+function wireTasks(d) {
+  document.querySelectorAll('[data-task]').forEach(function (b) {
+    b.onclick = function () { var t = d.myTasks[+b.dataset.task]; state.period = t.periodId; state.editing = true; location.hash = '#unit/' + encodeURIComponent(t.unitId); };
+  });
+}
 function renderOverview(d) {
   var n = { on_track: 0, at_risk: 0, behind: 0, none: 0 };
   d.ranked.forEach(function (u) { if (u.reporting !== 'not_due') n[u.score === null ? 'none' : u.status]++; });
@@ -414,6 +431,7 @@ function renderOverview(d) {
   if (missing.length) lede.push('لم ترفع البيانات: <b>' + missing.join('، ') + '</b>');
   var compare = d.previousScore !== null && d.score !== null
     ? (d.score - d.previousScore >= 0 ? 'ارتفاع ' : 'انخفاض ') + '<span class="ltr">' + Math.abs(d.score - d.previousScore).toFixed(1) + '</span> نقطة مقارنة بـ' + esc(d.previousLabel)
+    : d.previousLabel ? 'تظهر المقارنة مع ' + esc(d.previousLabel) + ' بعد إدخال أرقام هذه الفترة'
     : 'تبدأ المقارنة بعد رفع بيانات ' + esc(d.nextLabel);
   var body = '<div class="lead"><div class="wrap head"><h1>مؤشرات أداء الدائرة الهندسية</h1><p class="lede">' + (lede.join(' · ') || 'جميع الأقسام والشعب رفعت بياناتها ولا يوجد منها ما يحتاج إلى تحسين') + '</p></div>' +
     '<div class="figs"><div class="wrap">' +
@@ -422,9 +440,10 @@ function renderOverview(d) {
       fig('أقسام وشعب رفعت البيانات', d.coverage.reported + ' <small>من ' + d.coverage.total + '</small>', d.coverage.partial ? d.coverage.partial + ' بشكل جزئي' : '') +
       fig('المعاملات الواردة', fmt(d.totals.received), compare) +
     '</div></div></div>' +
-    '<div class="wrap cols"><div>' + unitsBlock(d) + '</div><div>' + mixBlock(d.totals) + reasonsBlock(d.reasons, 4) + worksBlock(d.fieldTotals) + '</div></div>';
+    tasksBox(d) + '<div class="wrap cols"><div>' + unitsBlock(d) + '</div><div>' + mixBlock(d.totals) + reasonsBlock(d.reasons, 4) + worksBlock(d.fieldTotals) + '</div></div>';
   document.getElementById('app').innerHTML = shell(d, 'overview', body);
   wire();
+  wireTasks(d);
 }
 
 function renderUnits(d) {
