@@ -500,27 +500,53 @@ function editForm(d) {
       '<td><select class="txt" ' + a('status') + ' aria-label="الحالة">' + statusOpts(w.status) + '</select></td>' +
       '<td><input class="txt" type="date" ' + a('startDate') + ' aria-label="البدء" value="' + esc(w.startDate) + '"></td><td><input class="txt" type="date" ' + a('endDate') + ' aria-label="الانتهاء" value="' + esc(w.endDate) + '"></td>' +
       '<td class="n">' + numInput(a('estimatedCost'), w.title + ': التقديرية', w.estimatedCost) + '</td><td class="n">' + numInput(a('spent'), w.title + ': المصروف', w.spent) + '</td>' +
-      '<td>' + T('currency', 'العملة', 'short') + '</td></tr>' + errRow(w.id, 9);
+      '<td>' + T('currency', 'العملة', 'short') + '</td>' + (N ? '<td><label class="chk"><input type="checkbox" data-remove="' + esc(w.id) + '"> إزالة</label></td>' : '') + '</tr>' + errRow(w.id, N ? 10 : 9);
   }).join('');
+  var types = {};
+  d.works.forEach(function (w) { if (w.type) types[w.type] = 1; });
+  var typeList = '<datalist id="workTypes">' + Object.keys(types).map(function (t) { return '<option value="' + esc(t) + '">'; }).join('') + '</datalist>';
   return '<div class="wrap narrow-block no-print"><form id="editForm" novalidate>' + unitBlock +
     '<section class="block"><div class="sec-head"><h2>المؤشرات</h2><span class="note">يجب أن يساوي مجموع الحالات عدد الوارد. اترك صف المؤشر فارغاً إذا لم تتوفر أرقامه.</span></div><div class="t-wrap"><table class="t"><thead><tr><th>المؤشر</th>' + EDIT_FIELDS.map(function (f) { return '<th class="n">' + f[1] + '</th>'; }).join('') + '</tr></thead><tbody>' + kpiRows + '</tbody></table></div></section>' +
     (reasonRows ? '<section class="block"><div class="sec-head"><h2>أسباب عدم الإنجاز</h2>' + (N ? '<span class="note">تغيير اسم السبب يغيّره في كل الأقسام والشعب التي تستخدمه.</span>' : '') + '</div><div class="t-wrap"><table class="t"><thead><tr><th>السبب</th><th class="n">العدد</th></tr></thead><tbody>' + reasonRows + '</tbody></table></div></section>' : '') +
-    (workRows ? '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2></div><div class="t-wrap"><table class="t"><thead><tr><th>العمل</th><th>النوع</th><th>الموقع</th><th>الحالة</th><th>البدء</th><th>الانتهاء</th><th class="n">التقديرية</th><th class="n">المصروف</th><th>العملة</th></tr></thead><tbody>' + workRows + '</tbody></table></div></section>' : '') +
+    '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2><button class="btn ghost" type="button" id="addWorkBtn">+ إضافة عمل</button></div>' + typeList +
+      '<div class="t-wrap"><table class="t"><thead><tr><th>العمل</th><th>النوع</th><th>الموقع</th><th>الحالة</th><th>البدء</th><th>الانتهاء</th><th class="n">التقديرية</th><th class="n">المصروف</th><th>العملة</th>' + (N ? '<th></th>' : '') + '</tr></thead><tbody id="workBody">' + workRows + '</tbody></table></div>' +
+      (workRows ? '' : '<p class="note" id="noWorks">لا توجد أعمال مسجلة. اضغط "إضافة عمل" لإضافة أول عمل.</p>') + '</section>' +
     '<div class="form-actions"><button class="btn" type="submit" id="saveBtn">حفظ التعديلات</button><button class="btn ghost" type="button" id="cancelBtn">إلغاء</button>' +
     (d.localCopy ? '<button class="btn ghost sep" type="button" id="copyBtn">تنزيل نسخة من الأرقام</button><button class="btn ghost" type="button" id="loadBtn">استرجاع نسخة</button><input type="file" id="loadFile" accept=".json" hidden aria-label="ملف النسخة"><button class="btn ghost" type="button" id="resetBtn">العودة إلى الأرقام الأصلية</button>' : '') +
     '</div><div class="ferr" id="formMsg" role="alert"></div></form></div>';
 }
+// An empty row for a new work. Every field is filled in by the person adding it.
+var newWorkCount = 0;
+function newWorkRow(N) {
+  var id = 'new' + (++newWorkCount), a = function (f) { return 'data-new="' + id + '" data-f="' + f + '"'; };
+  var opts = '<option value="">غير محددة</option>' + Object.keys(WORK_STATUS).map(function (k) { return '<option value="' + k + '"' + (k === 'ongoing' ? ' selected' : '') + '>' + esc(WORK_STATUS[k]) + '</option>'; }).join('');
+  return '<tr class="new-row"><td>' + txtInput(a('title'), 'اسم العمل الجديد', '', 'wide') + '</td><td>' + txtInput(a('type') + ' list="workTypes"', 'النوع', '') + '</td><td>' + txtInput(a('location'), 'الموقع', '') + '</td>' +
+    '<td><select class="txt" ' + a('status') + ' aria-label="الحالة">' + opts + '</select></td>' +
+    '<td><input class="txt" type="date" ' + a('startDate') + ' aria-label="البدء"></td><td><input class="txt" type="date" ' + a('endDate') + ' aria-label="الانتهاء"></td>' +
+    '<td class="n">' + numInput(a('estimatedCost'), 'التكلفة التقديرية', '') + '</td><td class="n">' + numInput(a('spent'), 'المصروف', '') + '</td>' +
+    '<td>' + txtInput(a('currency'), 'العملة', 'شيكل', 'short') + '</td>' + (N ? '<td><button class="linkish" type="button" data-drop="' + id + '">حذف السطر</button></td>' : '<td><button class="linkish" type="button" data-drop="' + id + '">حذف السطر</button></td>') + '</tr>' + errRow(id, 10);
+}
 function wireEdit(d) {
   var form = document.getElementById('editForm'), msg = document.getElementById('formMsg');
+  var body = document.getElementById('workBody');
+  document.getElementById('addWorkBtn').onclick = function () {
+    body.insertAdjacentHTML('beforeend', newWorkRow(d.canNames));
+    var nw = document.getElementById('noWorks'); if (nw) nw.hidden = true;
+    var rows = body.querySelectorAll('tr.new-row'), last = rows[rows.length - 1];
+    last.querySelector('input').focus();
+    last.querySelector('[data-drop]').onclick = function () { var e = last.nextElementSibling; if (e && e.classList.contains('err-row')) e.remove(); last.remove(); };
+  };
   function fail(m) { msg.textContent = m; }
   function done() { state.editing = false; route(); }
   document.getElementById('cancelBtn').onclick = done;
   form.onsubmit = function (ev) {
     ev.preventDefault();
-    var byKpi = {}, works = {}, reasons = {}, unit = null;
-    form.querySelectorAll('[data-kpi],[data-work],[data-reason],[data-unit]').forEach(function (i) {
+    var byKpi = {}, works = {}, reasons = {}, unit = null, added = {}, removed = [];
+    form.querySelectorAll('[data-kpi],[data-work],[data-reason],[data-unit],[data-new],[data-remove]').forEach(function (i) {
       var s = i.dataset;
-      if (s.kpi) (byKpi[s.kpi] = byKpi[s.kpi] || { kpiId: s.kpi })[s.f] = i.value;
+      if (s.remove) { if (i.checked) removed.push({ id: s.remove, version: (d.works.filter(function (w) { return w.id === s.remove; })[0] || {}).version }); }
+      else if (s.new) (added[s.new] = added[s.new] || { tmpId: s.new })[s.f] = i.value;
+      else if (s.kpi) (byKpi[s.kpi] = byKpi[s.kpi] || { kpiId: s.kpi })[s.f] = i.value;
       else if (s.work) (works[s.work] = works[s.work] || { id: s.work })[s.f] = i.value;
       else if (s.reason) (reasons[s.reason] = reasons[s.reason] || { id: s.reason })[s.f] = i.value;
       else if (s.unit) (unit = unit || { version: d.unitInfo.version })[s.unit] = i.value;
@@ -532,7 +558,10 @@ function wireEdit(d) {
     d.works.forEach(function (w) { if (works[w.id]) works[w.id].version = w.version; });
     d.reasonRows.forEach(function (r) { if (reasons[r.id]) { reasons[r.id].version = r.version; reasons[r.id].oldName = r.name; } });
     var vals = function (o) { return Object.keys(o).map(function (k) { return o[k]; }); };
-    api('saveUnit', { id: d.unit.id, period: d.period.id, unit: unit, entries: vals(byKpi), works: vals(works), reasons: vals(reasons) }, function (res) {
+    // A new row left completely empty is ignored.
+    var newWorks = vals(added).filter(function (w) { return ['title', 'type', 'location', 'startDate', 'endDate', 'estimatedCost', 'spent'].some(function (f) { return String(w[f] || '').trim(); }); });
+    if (removed.length && !window.confirm('سيُزال ' + removed.length + ' من الأعمال من الصفحة (يبقى محفوظاً في الأرشيف). هل تريد المتابعة؟')) { btn.disabled = false; return; }
+    api('saveUnit', { id: d.unit.id, period: d.period.id, unit: unit, entries: vals(byKpi), works: vals(works), reasons: vals(reasons), newWorks: newWorks, removeWorks: removed }, function (res) {
       btn.disabled = false;
       if (!res.errors.length) return done();
       res.errors.forEach(function (e) {
