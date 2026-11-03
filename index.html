@@ -313,7 +313,7 @@ function shell(d, active, body) {
     '<header class="mast"><div class="wrap">' +
       '<a class="org" href="#"><img src="' + PM_LOGO + '" alt="شعار بلدية نابلس"><div><b>بلدية نابلس</b><span>منصة مؤشرات الأداء</span></div></a>' +
       '<nav class="nav" aria-label="القائمة الرئيسية"><a href="#" class="' + (active === 'overview' ? 'on' : '') + '">النظرة العامة</a><a href="#units" class="' + (active === 'units' ? 'on' : '') + '">الأقسام والشعب</a>' +
-        (d.user && d.user.role === 'admin' ? '<a href="#users" class="no-print ' + (active === 'users' ? 'on' : '') + '">المستخدمون</a>' : '') + '</nav>' +
+        (d.user && d.user.role === 'admin' ? '<a href="#periods" class="no-print ' + (active === 'periods' ? 'on' : '') + '">الفترات</a><a href="#users" class="no-print ' + (active === 'users' ? 'on' : '') + '">المستخدمون</a>' : '') + '</nav>' +
       '<div class="tools">' + (d.periods ? '<label for="period" class="note">الفترة</label><select id="period">' + options + '</select>' +
         '<button class="btn" id="printBtn">' + icon('print', 17) + 'تصدير PDF</button>' : '') +
         (d.user ? '<span class="who no-print"><a href="#account" title="حسابي">' + esc(d.user.name) + '</a><button class="linkish" id="logoutBtn" type="button">خروج</button></span>' : '') + '</div>' +
@@ -432,7 +432,7 @@ function kpiTable(kpis) {
 function worksTable(works) {
   if (!works.length) return '<div class="note" style="padding-top:.5rem">لا توجد أعمال مسجلة لهذه الفترة</div>';
   var rows = works.map(function (w) {
-    return '<tr><td>' + esc(w.title) + (w.reason ? '<span class="reason">السبب: ' + esc(w.reason) + '</span>' : '') + '</td><td>' + esc(w.type) + '</td><td>' + esc(w.location || '-') + '</td><td>' + esc(WORK_STATUS[w.status] || '-') + '</td><td class="n">' + esc(w.startDate || '-') + '</td><td class="n">' + esc(w.endDate || '-') + '</td><td class="n">' + (w.estimatedCost === '' ? '-' : fmt(w.estimatedCost)) + '</td><td class="n">' + (w.spent === '' ? '-' : fmt(w.spent)) + '</td><td>' + (w.estimatedCost === '' && w.spent === '' ? '-' : esc(w.currency)) + '</td></tr>';
+    return '<tr><td>' + esc(w.title) + (w.fromPeriod ? '<span class="reason">من ' + esc(w.fromPeriod) + '</span>' : '') + (w.reason ? '<span class="reason">السبب: ' + esc(w.reason) + '</span>' : '') + '</td><td>' + esc(w.type) + '</td><td>' + esc(w.location || '-') + '</td><td>' + esc(WORK_STATUS[w.status] || '-') + '</td><td class="n">' + esc(w.startDate || '-') + '</td><td class="n">' + esc(w.endDate || '-') + '</td><td class="n">' + (w.estimatedCost === '' ? '-' : fmt(w.estimatedCost)) + '</td><td class="n">' + (w.spent === '' ? '-' : fmt(w.spent)) + '</td><td>' + (w.estimatedCost === '' && w.spent === '' ? '-' : esc(w.currency)) + '</td></tr>';
   }).join('');
   return '<div class="t-wrap"><table class="t"><thead><tr><th>العمل</th><th>النوع</th><th>الموقع</th><th>الحالة</th><th class="n">البدء</th><th class="n">الانتهاء</th><th class="n">التقديرية</th><th class="n">المصروف</th><th>العملة</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
@@ -454,7 +454,7 @@ function renderUnit(d) {
   var u = d.unit, t = u.totals, missing = u.score === null, wt = { finished: 0, spent: {} };
   d.works.forEach(function (w) { if (w.status === 'finished') wt.finished++; if (w.spent !== '' && w.currency) wt.spent[w.currency] = (wt.spent[w.currency] || 0) + Number(w.spent); });
   var body = '<div class="lead"><div class="wrap head"><div class="crumb"><a href="#">النظرة العامة</a> / <a href="#units">الأقسام والشعب</a> / ' + esc(u.name) + '</div>' +
-      '<div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-end"><div><h1>' + esc(u.name) + '</h1><p class="lede">' + esc(d.period.label) + (d.lastEdit && !missing ? ' · آخر تحديث: ' + esc(d.lastEdit) : '') + '</p></div>' +
+      '<div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-end"><div><h1>' + esc(u.name) + '</h1><p class="lede">' + esc(d.period.label) + (d.period.closed ? ' · <b>فترة مغلقة</b>' : '') + (d.lastEdit && !missing ? ' · آخر تحديث: ' + esc(d.lastEdit) : '') + '</p></div>' +
       (d.canEdit && !state.editing ? '<button class="btn ghost no-print" id="editBtn">تعديل البيانات</button>' : '') + '</div></div>' +
     '<div class="figs"><div class="wrap">' +
       fig('النتيجة', '<span class="ltr">' + pct(u.score) + '</span>', pill(missing ? 'none' : u.status)) +
@@ -496,7 +496,7 @@ function editForm(d) {
   var workRows = d.works.map(function (w) {
     var a = function (f) { return 'data-work="' + esc(w.id) + '" data-f="' + f + '"'; };
     var T = function (f, label, cls) { return N ? txtInput(a(f), label, w[f], cls) : esc(w[f] || '-'); };
-    return '<tr><td>' + T('title', 'اسم العمل', 'wide') + '</td><td>' + T('type', 'النوع') + '</td><td>' + T('location', 'الموقع') + '</td>' +
+    return '<tr><td>' + T('title', 'اسم العمل', 'wide') + (w.fromPeriod ? '<span class="reason">من ' + esc(w.fromPeriod) + '</span>' : '') + '</td><td>' + T('type', 'النوع') + '</td><td>' + T('location', 'الموقع') + '</td>' +
       '<td><select class="txt" ' + a('status') + ' aria-label="الحالة">' + statusOpts(w.status) + '</select></td>' +
       '<td><input class="txt" type="date" ' + a('startDate') + ' aria-label="البدء" value="' + esc(w.startDate) + '"></td><td><input class="txt" type="date" ' + a('endDate') + ' aria-label="الانتهاء" value="' + esc(w.endDate) + '"></td>' +
       '<td class="n">' + numInput(a('estimatedCost'), w.title + ': التقديرية', w.estimatedCost) + '</td><td class="n">' + numInput(a('spent'), w.title + ': المصروف', w.spent) + '</td>' +
@@ -720,12 +720,62 @@ function renderUsers(d) {
   });
 }
 
+// ---- Periods (admin): open the next month, close a finished one, reminder emails ----
+function renderPeriods(d) {
+  var n = d.next;
+  var rows = d.periods.map(function (p, i) {
+    var status = p.closed ? '<span class="pill s-none">مغلقة</span>' : '<span class="pill s-on_track">مفتوحة</span>';
+    return '<tr><td><b>' + esc(p.label) + '</b><span class="reason ltr">' + esc(p.start) + ' - ' + esc(p.end) + '</span></td><td>' + status + '</td>' +
+      '<td class="n">' + p.reported + ' من ' + p.total + '</td><td>' + (p.missingNames.length ? esc(p.missingNames.join('، ')) : 'الجميع أدخل أرقامه') + '</td>' +
+      '<td><button class="linkish" type="button" data-close="' + i + '">' + (p.closed ? 'إعادة فتح' : 'إغلاق') + '</button></td></tr>';
+  }).join('');
+  var body = '<div class="lead"><div class="wrap head"><div class="crumb"><a href="#">النظرة العامة</a> / الفترات</div><h1>الفترات</h1>' +
+    '<p class="lede">افتح كل شهر ليُدخل كل قسم وشعبة أرقام ذلك الشهر. أغلق الشهر عند اكتماله فلا يغيّره أحد غيرك.</p></div></div>' +
+    '<div class="wrap narrow-block"><div id="pMsgBox"></div>' +
+    '<section class="block"><div class="sec-head"><h2>الشهر التالي: ' + esc(n.label) + '</h2>' +
+      (n.canOpen ? '<button class="btn" id="openBtn" type="button">فتح ' + esc(n.label) + '</button>' : '<span class="note">يمكن فتحه ابتداءً من <span class="ltr">' + esc(n.start) + '</span></span>') + '</div>' +
+      '<p class="note">عند الفتح يظهر الشهر في قائمة الفترات أعلى كل صفحة' + (d.reminders.on ? '، وتصل رسالة بالبريد إلى رؤساء الأقسام ومحرري الشعب (' + d.recipients + ' مستخدم).' : '.') + ' الأعمال غير المنتهية من الفترات السابقة تظهر في الشهر الجديد لمتابعة حالتها.</p></section>' +
+    '<section class="block"><div class="sec-head"><h2>جميع الفترات</h2></div><div class="t-wrap"><table class="t"><thead><tr><th>الفترة</th><th>الحالة</th><th class="n">أدخلت أرقامها</th><th>لم تُدخل بعد</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div></section>' +
+    '<section class="block"><form id="remForm" class="card" novalidate><h2>التذكير بالبريد</h2>' +
+      '<label class="chk"><input type="checkbox" id="remOn"' + (d.reminders.on ? ' checked' : '') + '> إرسال التذكير</label>' +
+      '<div class="fld"><label for="remDays">يُرسل التذكير بعد كم يوم من فتح الشهر، ويتكرر كل هذا العدد من الأيام حتى تُدخل الأرقام</label><input id="remDays" type="number" min="1" max="31" dir="ltr" value="' + d.reminders.days + '" style="max-width:8rem"></div>' +
+      '<p class="note">يصل التذكير إلى رؤساء الأقسام ومحرري الشعب الذين لم يُدخلوا أرقام الشهر، حسب البريد المسجل لهم في صفحة المستخدمين. المسجلون الآن: ' + d.recipients + '.</p>' +
+      '<div class="ferr" id="remMsg" role="alert"></div><div class="form-actions"><button class="btn" id="remBtn" type="submit">حفظ</button></div></form></section></div>';
+  document.getElementById('app').innerHTML = shell({ user: { name: d.myName, role: 'admin' }, today: '' }, 'periods', body);
+  wire();
+  function note(t) { document.getElementById('pMsgBox').innerHTML = '<div class="card ok" role="status">' + t + '</div>'; window.scrollTo(0, 0); }
+  var ob = document.getElementById('openBtn');
+  if (ob) ob.onclick = function () {
+    if (!window.confirm('فتح ' + n.label + '؟')) return;
+    busy(ob, true);
+    api('admin.openMonth', {}, function (r) {
+      state.period = null;
+      api('admin.periods', {}, function (dd) { renderPeriods(dd); note('تم فتح ' + esc(r.label) + (r.emailed ? '، وأُرسلت ' + r.emailed + ' رسالة.' : '.')); }, showError);
+    }, function (e) { busy(ob, false); note(esc(e)); });
+  };
+  document.querySelectorAll('[data-close]').forEach(function (b) {
+    b.onclick = function () {
+      var p = d.periods[+b.dataset.close];
+      if (!window.confirm((p.closed ? 'إعادة فتح ' : 'إغلاق ') + p.label + '؟')) return;
+      api('admin.setClosed', { id: p.id, closed: !p.closed }, function () { api('admin.periods', {}, renderPeriods, showError); }, function (e) { note(esc(e)); });
+    };
+  });
+  document.getElementById('remForm').onsubmit = function (ev) {
+    ev.preventDefault();
+    var b = document.getElementById('remBtn'), m = document.getElementById('remMsg'); busy(b, true); m.textContent = '';
+    api('admin.saveReminders', { on: document.getElementById('remOn').checked, days: val('remDays') }, function () {
+      api('admin.periods', {}, function (dd) { renderPeriods(dd); note('تم حفظ إعدادات التذكير.'); }, showError);
+    }, function (e) { busy(b, false); m.textContent = e; });
+  };
+}
+
 function route() {
   var h = location.hash.replace(/^#/, '');
   var m = /^unit\/(.+)$/.exec(h);
   if (!m) state.editing = false;
   if (h === 'account') return api('me', {}, renderAccount, showError);
   if (h === 'users') return api('admin.users', {}, renderUsers, showError);
+  if (h === 'periods') return api('admin.periods', {}, renderPeriods, showError);
   if (m) return api('unit', { id: decodeURIComponent(m[1]), period: state.period }, function (d) { state.period = d.period.id; renderUnit(d); }, showError);
   api('dashboard', { period: state.period }, function (d) { state.period = d.period.id; (h === 'units' ? renderUnits : renderOverview)(d); }, showError);
 }
