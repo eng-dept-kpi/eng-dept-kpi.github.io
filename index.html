@@ -312,7 +312,7 @@ function shell(d, active, body) {
   return '<div class="page"><div class="strip"><div class="wrap"><span>بلدية نابلس · الدائرة الهندسية</span>' + (d.notice ? '<span>' + esc(d.notice) + '</span>' : '') + '</div></div>' +
     '<header class="mast"><div class="wrap">' +
       '<a class="org" href="#"><img src="' + PM_LOGO + '" alt="شعار بلدية نابلس"><div><b>بلدية نابلس</b><span>منصة مؤشرات الأداء</span></div></a>' +
-      '<nav class="nav" aria-label="القائمة الرئيسية"><a href="#" class="' + (active === 'overview' ? 'on' : '') + '">النظرة العامة</a><a href="#units" class="' + (active === 'units' ? 'on' : '') + '">الوحدات</a>' +
+      '<nav class="nav" aria-label="القائمة الرئيسية"><a href="#" class="' + (active === 'overview' ? 'on' : '') + '">النظرة العامة</a><a href="#units" class="' + (active === 'units' ? 'on' : '') + '">الأقسام والشعب</a>' +
         (d.user && d.user.role === 'admin' ? '<a href="#users" class="no-print ' + (active === 'users' ? 'on' : '') + '">المستخدمون</a>' : '') + '</nav>' +
       '<div class="tools">' + (d.periods ? '<label for="period" class="note">الفترة</label><select id="period">' + options + '</select>' +
         '<button class="btn" id="printBtn">' + icon('print', 17) + 'تصدير PDF</button>' : '') +
@@ -360,14 +360,14 @@ function keyHtml(s) {
     '<span>' + pill('at_risk') + 'من ' + s.at + '% إلى أقل من ' + s.on + '%</span>' +
     '<span>' + pill('behind') + 'أقل من ' + s.at + '%</span>' +
     '<span>' + pill('none') + 'لم تُدخل بيانات هذه الفترة</span></div>' +
-    '<div class="formula"><b>النتيجة</b> = (منجز + محوّل + عالق) ÷ (الوارد − الملغى). <b>عالق</b>: أنجزت الوحدة دورها وتنتظر المواطن.</div>';
+    '<div class="formula"><b>النتيجة</b> = (منجز + محوّل + عالق) ÷ (الوارد − الملغى). <b>عالق</b>: أنجز القسم أو الشعبة الدور المطلوب وبانتظار المواطن.</div>';
 }
 
 function unitsBlock(d) {
   var s = { on: Number(d.settings.onTrackMin), at: Number(d.settings.atRiskMin) };
   var hasDelta = d.previousScore !== null;
-  return '<section class="block"><div class="sec-head"><h2>أداء الوحدات</h2></div>' +
-    '<div class="u-grid u-head' + (hasDelta ? ' has-delta' : '') + '"><span>الوحدة</span><span class="scale" aria-hidden="true"><i style="right:0">0</i><i style="right:' + s.at + '%">' + s.at + '</i><i style="right:' + s.on + '%">' + s.on + '</i><i style="right:100%">100%</i></span><span style="text-align:left">النتيجة</span><span style="text-align:left">الوارد</span>' + (hasDelta ? '<span>التغير</span>' : '') + '<span>الحالة</span></div>' +
+  return '<section class="block"><div class="sec-head"><h2>أداء الأقسام والشعب</h2></div>' +
+    '<div class="u-grid u-head' + (hasDelta ? ' has-delta' : '') + '"><span>القسم أو الشعبة</span><span class="scale" aria-hidden="true"><i style="right:0">0</i><i style="right:' + s.at + '%">' + s.at + '</i><i style="right:' + s.on + '%">' + s.on + '</i><i style="right:100%">100%</i></span><span style="text-align:left">النتيجة</span><span style="text-align:left">الوارد</span>' + (hasDelta ? '<span>التغير</span>' : '') + '<span>الحالة</span></div>' +
     d.ranked.map(function (u) { return unitRow(u, s, hasDelta); }).join('') + keyHtml(s) + '</section>';
 }
 
@@ -387,7 +387,7 @@ function reasonsBlock(list, limit) {
 function worksBlock(t) {
   return '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2></div><div class="work-sum">' +
     '<div><div class="v tn">' + fmt(t.finished) + '</div><div class="k">منتهية</div></div><div><div class="v tn">' + fmt(t.ongoing + t.stopped) + '</div><div class="k">جارية أو متوقفة</div></div>' +
-    '<div><div class="v tn" style="font-size:1.02rem">' + moneyLines(t.spent) + '</div><div class="k">المصروف كما أفادت الوحدات</div></div></div></section>';
+    '<div><div class="v tn" style="font-size:1.02rem">' + moneyLines(t.spent) + '</div><div class="k">المصروف كما أفادت الأقسام والشعب</div></div></div></section>';
 }
 
 function renderOverview(d) {
@@ -401,11 +401,11 @@ function renderOverview(d) {
   var compare = d.previousScore !== null && d.score !== null
     ? (d.score - d.previousScore >= 0 ? 'ارتفاع ' : 'انخفاض ') + '<span class="ltr">' + Math.abs(d.score - d.previousScore).toFixed(1) + '</span> نقطة مقارنة بـ' + esc(d.previousLabel)
     : 'تبدأ المقارنة بعد رفع بيانات ' + esc(d.nextLabel);
-  var body = '<div class="lead"><div class="wrap head"><h1>مؤشرات أداء الدائرة الهندسية</h1><p class="lede">' + (lede.join(' · ') || 'جميع الوحدات رفعت بياناتها ولا توجد وحدات تحتاج إلى تحسين') + '</p></div>' +
+  var body = '<div class="lead"><div class="wrap head"><h1>مؤشرات أداء الدائرة الهندسية</h1><p class="lede">' + (lede.join(' · ') || 'جميع الأقسام والشعب رفعت بياناتها ولا يوجد منها ما يحتاج إلى تحسين') + '</p></div>' +
     '<div class="figs"><div class="wrap">' +
       fig('أداء الدائرة', '<span class="ltr">' + pct(d.score) + '</span>', pill(d.status === 'none' ? 'none' : d.status)) +
-      fig('وحدات ضمن المسار', n.on_track + ' <small>من ' + d.coverage.total + '</small>', STATUS_LABEL.at_risk + ' ' + n.at_risk + ' · ' + STATUS_LABEL.behind + ' ' + n.behind) +
-      fig('وحدات رفعت البيانات', d.coverage.reported + ' <small>من ' + d.coverage.total + '</small>', d.coverage.partial ? d.coverage.partial + ' بشكل جزئي' : '') +
+      fig('أقسام وشعب ضمن المسار', n.on_track + ' <small>من ' + d.coverage.total + '</small>', STATUS_LABEL.at_risk + ' ' + n.at_risk + ' · ' + STATUS_LABEL.behind + ' ' + n.behind) +
+      fig('أقسام وشعب رفعت البيانات', d.coverage.reported + ' <small>من ' + d.coverage.total + '</small>', d.coverage.partial ? d.coverage.partial + ' بشكل جزئي' : '') +
       fig('المعاملات الواردة', fmt(d.totals.received), compare) +
     '</div></div></div>' +
     '<div class="wrap cols"><div>' + unitsBlock(d) + '</div><div>' + mixBlock(d.totals) + reasonsBlock(d.reasons, 4) + worksBlock(d.fieldTotals) + '</div></div>';
@@ -414,7 +414,7 @@ function renderOverview(d) {
 }
 
 function renderUnits(d) {
-  var body = '<div class="lead"><div class="wrap head"><div class="crumb"><a href="#">النظرة العامة</a> / الوحدات</div><h1>الوحدات</h1><p class="lede">اختر قسماً أو شعبة لعرض تفاصيلها.</p></div></div>' +
+  var body = '<div class="lead"><div class="wrap head"><div class="crumb"><a href="#">النظرة العامة</a> / الأقسام والشعب</div><h1>الأقسام والشعب</h1><p class="lede">اختر قسماً أو شعبة لعرض تفاصيلها.</p></div></div>' +
     '<div class="wrap narrow-block">' + unitsBlock(d) + '</div>';
   document.getElementById('app').innerHTML = shell(d, 'units', body);
   wire();
@@ -453,7 +453,7 @@ function historyTable(h) {
 function renderUnit(d) {
   var u = d.unit, t = u.totals, missing = u.score === null, wt = { finished: 0, spent: {} };
   d.works.forEach(function (w) { if (w.status === 'finished') wt.finished++; if (w.spent !== '' && w.currency) wt.spent[w.currency] = (wt.spent[w.currency] || 0) + Number(w.spent); });
-  var body = '<div class="lead"><div class="wrap head"><div class="crumb"><a href="#">النظرة العامة</a> / <a href="#units">الوحدات</a> / ' + esc(u.name) + '</div>' +
+  var body = '<div class="lead"><div class="wrap head"><div class="crumb"><a href="#">النظرة العامة</a> / <a href="#units">الأقسام والشعب</a> / ' + esc(u.name) + '</div>' +
       '<div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-end"><div><h1>' + esc(u.name) + '</h1><p class="lede">' + esc(d.period.label) + (d.lastEdit && !missing ? ' · آخر تحديث: ' + esc(d.lastEdit) : '') + '</p></div>' +
       (d.canEdit && !state.editing ? '<button class="btn ghost no-print" id="editBtn">تعديل البيانات</button>' : '') + '</div></div>' +
     '<div class="figs"><div class="wrap">' +
@@ -464,7 +464,7 @@ function renderUnit(d) {
     '</div></div></div>' + (state.editing ? editForm(d) :
     '<div class="wrap cols"><div>' +
       '<section class="block"><div class="sec-head"><h2>المؤشرات</h2></div>' + kpiTable(d.kpis) + keyHtml({ on: Number(d.settings.onTrackMin), at: Number(d.settings.atRiskMin) }) + '</section>' +
-      '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2><span class="note">منتهية ' + wt.finished + ' · المصروف ' + moneyLines(wt.spent) + ' · كما أفادت الوحدة</span></div>' + worksTable(d.works) + '</section>' +
+      '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2><span class="note">منتهية ' + wt.finished + ' · المصروف ' + moneyLines(wt.spent) + ' · كما أفاد القسم أو الشعبة</span></div>' + worksTable(d.works) + '</section>' +
       '<section class="block"><div class="sec-head"><h2>المهام</h2></div>' + tasksTable(d.tasks) + '</section>' +
     '</div><div>' + reasonsBlock(d.reasons, 8) +
       '<section class="block"><div class="sec-head"><h2>السجل حسب الفترة</h2></div>' + historyTable(d.history) + '</section>' +
@@ -483,7 +483,7 @@ function txtInput(attrs, label, value, cls) { return '<input class="txt ' + (cls
 function errRow(id, span) { return '<tr class="err-row" data-err="' + esc(id) + '" hidden><td colspan="' + span + '" class="ferr" role="alert"></td></tr>'; }
 function editForm(d) {
   var N = d.canNames;
-  var unitBlock = N && d.unitInfo ? '<section class="block"><div class="sec-head"><h2>الوحدة</h2></div><table class="t"><tbody><tr><td>الاسم</td><td>' + txtInput('data-unit="name"', 'اسم الوحدة', d.unitInfo.name, 'wide') + '</td></tr>' +
+  var unitBlock = N && d.unitInfo ? '<section class="block"><div class="sec-head"><h2>القسم أو الشعبة</h2></div><table class="t"><tbody><tr><td>الاسم</td><td>' + txtInput('data-unit="name"', 'الاسم', d.unitInfo.name, 'wide') + '</td></tr>' +
     '<tr><td>التصنيف (قسم أو شعبة)</td><td>' + txtInput('data-unit="label"', 'التصنيف', d.unitInfo.label) + '</td></tr>' + errRow('unit', 2) + '</tbody></table></section>' : '';
   var kpiRows = d.kpis.map(function (r) {
     var cells = EDIT_FIELDS.map(function (f) { return '<td class="n">' + numInput('data-kpi="' + esc(r.id) + '" data-f="' + f[0] + '"', r.name + ': ' + f[1], r.entry ? r.entry[f[0]] : '') + '</td>'; }).join('');
@@ -504,7 +504,7 @@ function editForm(d) {
   }).join('');
   return '<div class="wrap narrow-block no-print"><form id="editForm" novalidate>' + unitBlock +
     '<section class="block"><div class="sec-head"><h2>المؤشرات</h2><span class="note">يجب أن يساوي مجموع الحالات عدد الوارد. اترك صف المؤشر فارغاً إذا لم تتوفر أرقامه.</span></div><div class="t-wrap"><table class="t"><thead><tr><th>المؤشر</th>' + EDIT_FIELDS.map(function (f) { return '<th class="n">' + f[1] + '</th>'; }).join('') + '</tr></thead><tbody>' + kpiRows + '</tbody></table></div></section>' +
-    (reasonRows ? '<section class="block"><div class="sec-head"><h2>أسباب عدم الإنجاز</h2>' + (N ? '<span class="note">تغيير اسم السبب يغيّره في كل الوحدات التي تستخدمه.</span>' : '') + '</div><div class="t-wrap"><table class="t"><thead><tr><th>السبب</th><th class="n">العدد</th></tr></thead><tbody>' + reasonRows + '</tbody></table></div></section>' : '') +
+    (reasonRows ? '<section class="block"><div class="sec-head"><h2>أسباب عدم الإنجاز</h2>' + (N ? '<span class="note">تغيير اسم السبب يغيّره في كل الأقسام والشعب التي تستخدمه.</span>' : '') + '</div><div class="t-wrap"><table class="t"><thead><tr><th>السبب</th><th class="n">العدد</th></tr></thead><tbody>' + reasonRows + '</tbody></table></div></section>' : '') +
     (workRows ? '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2></div><div class="t-wrap"><table class="t"><thead><tr><th>العمل</th><th>النوع</th><th>الموقع</th><th>الحالة</th><th>البدء</th><th>الانتهاء</th><th class="n">التقديرية</th><th class="n">المصروف</th><th>العملة</th></tr></thead><tbody>' + workRows + '</tbody></table></div></section>' : '') +
     '<div class="form-actions"><button class="btn" type="submit" id="saveBtn">حفظ التعديلات</button><button class="btn ghost" type="button" id="cancelBtn">إلغاء</button>' +
     (d.localCopy ? '<button class="btn ghost sep" type="button" id="copyBtn">تنزيل نسخة من الأرقام</button><button class="btn ghost" type="button" id="loadBtn">استرجاع نسخة</button><input type="file" id="loadFile" accept=".json" hidden aria-label="ملف النسخة"><button class="btn ghost" type="button" id="resetBtn">العودة إلى الأرقام الأصلية</button>' : '') +
@@ -559,7 +559,7 @@ function wireEdit(d) {
     file.files[0].text().then(function (text) { api('importFigures', { json: text }, done, fail); });
   };
   document.getElementById('resetBtn').onclick = function () {
-    if (window.confirm('ستُحذف جميع التعديلات وتعود الأرقام كما في ملفات الوحدات. هل تريد المتابعة؟')) api('resetFigures', {}, done, fail);
+    if (window.confirm('ستُحذف جميع التعديلات وتعود الأرقام كما في ملفات الأقسام والشعب. هل تريد المتابعة؟')) api('resetFigures', {}, done, fail);
   };
 }
 
@@ -634,18 +634,18 @@ function renderUsers(d) {
   d.units.forEach(function (u) { unitName[u.id] = u.name; });
   var rows = d.users.map(function (u, i) {
     return '<tr><td>' + esc(u.name) + (u.title ? '<span class="reason">' + esc(u.title) + '</span>' : '') + '</td><td><span class="ltr">' + esc(u.email) + '</span></td><td>' + esc(d.roles[u.role] || u.role) + '</td>' +
-      '<td>' + (u.unitIds.length ? u.unitIds.map(function (x) { return esc(unitName[x] || x); }).join('، ') : 'جميع الوحدات') + '</td>' +
+      '<td>' + (u.unitIds.length ? u.unitIds.map(function (x) { return esc(unitName[x] || x); }).join('، ') : 'جميع الأقسام والشعب') + '</td>' +
       '<td>' + (!u.active ? 'موقوف' : u.locked ? 'مقفل مؤقتاً' : u.mustChange ? 'بانتظار أول دخول' : 'فعّال') + '</td><td class="n">' + esc(u.lastLogin || '-') + '</td>' +
       '<td><button class="linkish" data-edit="' + i + '" type="button">تعديل</button>' + (u.email !== d.me ? ' · <button class="linkish" data-reset="' + i + '" type="button">كلمة مرور مؤقتة</button>' : '') + '</td></tr>';
   }).join('');
   var body = '<div class="lead"><div class="wrap head"><div class="crumb"><a href="#">النظرة العامة</a> / المستخدمون</div><h1>المستخدمون</h1>' +
     '<p class="lede">أضف من يحتاج إلى الدخول. كل مستخدم جديد يحصل على كلمة مرور مؤقتة تعطيها له بنفسك، ويغيّرها عند أول دخول.</p></div></div>' +
     '<div class="wrap narrow-block"><div id="tempBox"></div><section class="block"><div class="sec-head"><h2>قائمة المستخدمين</h2><button class="btn" id="addBtn" type="button">إضافة مستخدم</button></div>' +
-    '<div class="t-wrap"><table class="t"><thead><tr><th>الاسم</th><th>البريد</th><th>الصلاحية</th><th>الوحدات</th><th>الحالة</th><th class="n">آخر دخول</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div></section>' +
+    '<div class="t-wrap"><table class="t"><thead><tr><th>الاسم</th><th>البريد</th><th>الصلاحية</th><th>الأقسام والشعب</th><th>الحالة</th><th class="n">آخر دخول</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div></section>' +
     '<div id="userForm"></div>' +
     '<section class="block"><div class="sec-head"><h2>الصلاحيات</h2></div><ul class="roles">' +
-      '<li><b>مدير النظام</b>: كل شيء، بما فيه الأسماء والنصوص والمستخدمون.</li><li><b>رئيس قسم</b>: يُدخل أرقام وحداته فقط.</li>' +
-      '<li><b>محرر شعبة</b>: يُدخل أرقام وحداته فقط.</li><li><b>عرض فقط</b>: يرى كل الصفحات ولا يعدّل شيئاً.</li></ul></section></div>';
+      '<li><b>مدير النظام</b>: كل شيء، بما فيه الأسماء والنصوص والمستخدمون.</li><li><b>رئيس قسم</b>: يُدخل أرقام قسمه فقط.</li>' +
+      '<li><b>محرر شعبة</b>: يُدخل أرقام شعبته فقط.</li><li><b>عرض فقط</b>: يرى كل الصفحات ولا يعدّل شيئاً.</li></ul></section></div>';
   document.getElementById('app').innerHTML = shell({ user: { name: d.myName, role: 'admin' }, today: '' }, 'users', body);
   wire();
   function showTemp(email, t) {
@@ -662,7 +662,7 @@ function renderUsers(d) {
       field('uEmail', 'البريد الإلكتروني', 'email', 'dir="ltr" value="' + esc(u.email) + '"' + (isNew ? '' : ' readonly')) + field('uName', 'الاسم', 'text', 'value="' + esc(u.name) + '"') +
       field('uTitle', 'المسمى الوظيفي (اختياري)', 'text', 'value="' + esc(u.title) + '"') +
       '<div class="fld"><label for="uRole">الصلاحية</label><select id="uRole">' + roles + '</select></div>' +
-      '<fieldset class="fld" id="uUnits"><legend>الوحدات التي يعدّل أرقامها</legend>' + units + '</fieldset>' +
+      '<fieldset class="fld" id="uUnits"><legend>الأقسام والشعب التي يُدخل أرقامها</legend>' + units + '</fieldset>' +
       '<label class="chk"><input type="checkbox" id="uActive"' + (u.active ? ' checked' : '') + '> الحساب فعّال</label>' +
       '<div class="ferr" id="uMsg" role="alert"></div><div class="form-actions"><button class="btn" id="uBtn" type="submit">حفظ</button><button class="btn ghost" id="uCancel" type="button">إلغاء</button></div></form></section>';
     var role = document.getElementById('uRole'), uu = document.getElementById('uUnits');
