@@ -492,7 +492,7 @@ function editForm(d) {
   var reasonRows = d.reasonRows.map(function (r) {
     return '<tr><td>' + (N ? txtInput('data-reason="' + esc(r.id) + '" data-f="name"', 'اسم السبب', r.name, 'wide') : esc(r.name)) + '</td><td class="n">' + numInput('data-reason="' + esc(r.id) + '" data-f="count"', r.name, r.count) + '</td></tr>' + errRow(r.id, 2);
   }).join('');
-  var statusOpts = function (cur) { return Object.keys(WORK_STATUS).map(function (k) { return '<option value="' + k + '"' + (cur === k ? ' selected' : '') + '>' + esc(WORK_STATUS[k]) + '</option>'; }).join(''); };
+  var statusOpts = function (cur) { return '<option value=""' + (cur ? '' : ' selected') + '>غير محددة</option>' + Object.keys(WORK_STATUS).map(function (k) { return '<option value="' + k + '"' + (cur === k ? ' selected' : '') + '>' + esc(WORK_STATUS[k]) + '</option>'; }).join(''); };
   var workRows = d.works.map(function (w) {
     var a = function (f) { return 'data-work="' + esc(w.id) + '" data-f="' + f + '"'; };
     var T = function (f, label, cls) { return N ? txtInput(a(f), label, w[f], cls) : esc(w[f] || '-'); };
