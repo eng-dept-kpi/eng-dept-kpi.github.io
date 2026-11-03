@@ -134,6 +134,10 @@ a.u-row:hover{background:var(--soft)}
 
 /* Editing figures */
 input.num{width:5.6rem;min-height:44px;border:1px solid var(--line);border-radius:2px;padding:0 .4rem;font:inherit;text-align:left;direction:ltr;background:var(--white)}
+.txt{min-height:44px;border:1px solid var(--line);border-radius:2px;padding:0 .5rem;font:inherit;background:var(--white);width:9rem}
+.txt.wide{width:100%;min-width:14rem}
+.txt.short{width:5rem}
+.txt:focus{outline:2px solid var(--brass);outline-offset:1px;border-color:var(--pri)}
 .ferr{color:var(--bad);font-size:.88rem;font-weight:700}
 .form-actions{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;padding-block:.9rem}
 .form-actions .sep{margin-inline-start:auto}
@@ -451,7 +455,7 @@ function renderUnit(d) {
   d.works.forEach(function (w) { if (w.status === 'finished') wt.finished++; if (w.spent !== '' && w.currency) wt.spent[w.currency] = (wt.spent[w.currency] || 0) + Number(w.spent); });
   var body = '<div class="lead"><div class="wrap head"><div class="crumb"><a href="#">النظرة العامة</a> / <a href="#units">الوحدات</a> / ' + esc(u.name) + '</div>' +
       '<div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-end"><div><h1>' + esc(u.name) + '</h1><p class="lede">' + esc(d.period.label) + (d.lastEdit && !missing ? ' · آخر تحديث: ' + esc(d.lastEdit) : '') + '</p></div>' +
-      (d.canEdit && !state.editing ? '<button class="btn ghost no-print" id="editBtn">تعديل الأرقام</button>' : '') + '</div></div>' +
+      (d.canEdit && !state.editing ? '<button class="btn ghost no-print" id="editBtn">تعديل البيانات</button>' : '') + '</div></div>' +
     '<div class="figs"><div class="wrap">' +
       fig('النتيجة', '<span class="ltr">' + pct(u.score) + '</span>', pill(missing ? 'none' : u.status)) +
       fig('الوارد', fmt(t.received), t.cancelled ? 'ملغى ' + fmt(t.cancelled) : '') +
@@ -471,23 +475,37 @@ function renderUnit(d) {
   else if (d.canEdit) document.getElementById('editBtn').onclick = function () { state.editing = true; renderUnit(d); };
 }
 
-// Every number on a unit's page can be corrected here. The server checks the figures before anything is saved.
+// Every name and number on a unit's page can be corrected here. The server checks everything before anything is saved.
+// Names (unit, indicators, reasons) are editable for the admin and section heads; numbers also for division editors.
 var EDIT_FIELDS = [['received', 'الوارد'], ['finished', 'منجز'], ['transferred', 'محوّل'], ['stuck', 'عالق'], ['inProgress', 'قيد التنفيذ'], ['cancelled', 'ملغى']];
 function numInput(attrs, label, value) { return '<input class="num" type="number" min="0" step="any" inputmode="decimal" ' + attrs + ' aria-label="' + esc(label) + '" value="' + esc(value === null || value === undefined ? '' : value) + '">'; }
+function txtInput(attrs, label, value, cls) { return '<input class="txt ' + (cls || '') + '" type="text" maxlength="200" ' + attrs + ' aria-label="' + esc(label) + '" value="' + esc(value === null || value === undefined ? '' : value) + '">'; }
+function errRow(id, span) { return '<tr class="err-row" data-err="' + esc(id) + '" hidden><td colspan="' + span + '" class="ferr" role="alert"></td></tr>'; }
 function editForm(d) {
+  var N = d.canNames;
+  var unitBlock = N && d.unitInfo ? '<section class="block"><div class="sec-head"><h2>الوحدة</h2></div><table class="t"><tbody><tr><td>الاسم</td><td>' + txtInput('data-unit="name"', 'اسم الوحدة', d.unitInfo.name, 'wide') + '</td></tr>' +
+    '<tr><td>التصنيف (قسم أو شعبة)</td><td>' + txtInput('data-unit="label"', 'التصنيف', d.unitInfo.label) + '</td></tr>' + errRow('unit', 2) + '</tbody></table></section>' : '';
   var kpiRows = d.kpis.map(function (r) {
     var cells = EDIT_FIELDS.map(function (f) { return '<td class="n">' + numInput('data-kpi="' + esc(r.id) + '" data-f="' + f[0] + '"', r.name + ': ' + f[1], r.entry ? r.entry[f[0]] : '') + '</td>'; }).join('');
-    return '<tr><td>' + esc(r.name) + '</td>' + cells + '</tr><tr class="err-row" data-err="' + esc(r.id) + '" hidden><td colspan="7" class="ferr" role="alert"></td></tr>';
+    return '<tr><td>' + (N ? txtInput('data-kpi="' + esc(r.id) + '" data-f="name"', 'اسم المؤشر', r.name, 'wide') : esc(r.name)) + '</td>' + cells + '</tr>' + errRow(r.id, 7);
   }).join('');
-  var reasonRows = d.reasonRows.map(function (r) { return '<tr><td>' + esc(r.name) + '</td><td class="n">' + numInput('data-reason="' + esc(r.id) + '"', r.name, r.count) + '</td></tr><tr class="err-row" data-err="' + esc(r.id) + '" hidden><td colspan="2" class="ferr" role="alert"></td></tr>'; }).join('');
+  var reasonRows = d.reasonRows.map(function (r) {
+    return '<tr><td>' + (N ? txtInput('data-reason="' + esc(r.id) + '" data-f="name"', 'اسم السبب', r.name, 'wide') : esc(r.name)) + '</td><td class="n">' + numInput('data-reason="' + esc(r.id) + '" data-f="count"', r.name, r.count) + '</td></tr>' + errRow(r.id, 2);
+  }).join('');
+  var statusOpts = function (cur) { return Object.keys(WORK_STATUS).map(function (k) { return '<option value="' + k + '"' + (cur === k ? ' selected' : '') + '>' + esc(WORK_STATUS[k]) + '</option>'; }).join(''); };
   var workRows = d.works.map(function (w) {
-    return '<tr><td>' + esc(w.title) + '</td><td class="n">' + numInput('data-work="' + esc(w.id) + '" data-f="estimatedCost"', w.title + ': التقديرية', w.estimatedCost) + '</td><td class="n">' + numInput('data-work="' + esc(w.id) + '" data-f="spent"', w.title + ': المصروف', w.spent) + '</td><td>' + esc(w.currency) + '</td></tr><tr class="err-row" data-err="' + esc(w.id) + '" hidden><td colspan="4" class="ferr" role="alert"></td></tr>';
+    var a = function (f) { return 'data-work="' + esc(w.id) + '" data-f="' + f + '"'; };
+    return '<tr><td>' + txtInput(a('title'), 'اسم العمل', w.title, 'wide') + '</td><td>' + txtInput(a('type'), 'النوع', w.type) + '</td><td>' + txtInput(a('location'), 'الموقع', w.location) + '</td>' +
+      '<td><select class="txt" ' + a('status') + ' aria-label="الحالة">' + statusOpts(w.status) + '</select></td>' +
+      '<td><input class="txt" type="date" ' + a('startDate') + ' aria-label="البدء" value="' + esc(w.startDate) + '"></td><td><input class="txt" type="date" ' + a('endDate') + ' aria-label="الانتهاء" value="' + esc(w.endDate) + '"></td>' +
+      '<td class="n">' + numInput(a('estimatedCost'), w.title + ': التقديرية', w.estimatedCost) + '</td><td class="n">' + numInput(a('spent'), w.title + ': المصروف', w.spent) + '</td>' +
+      '<td>' + txtInput(a('currency'), 'العملة', w.currency, 'short') + '</td></tr>' + errRow(w.id, 9);
   }).join('');
-  return '<div class="wrap narrow-block no-print"><form id="editForm" novalidate>' +
+  return '<div class="wrap narrow-block no-print"><form id="editForm" novalidate>' + unitBlock +
     '<section class="block"><div class="sec-head"><h2>المؤشرات</h2><span class="note">يجب أن يساوي مجموع الحالات عدد الوارد. اترك صف المؤشر فارغاً إذا لم تتوفر أرقامه.</span></div><div class="t-wrap"><table class="t"><thead><tr><th>المؤشر</th>' + EDIT_FIELDS.map(function (f) { return '<th class="n">' + f[1] + '</th>'; }).join('') + '</tr></thead><tbody>' + kpiRows + '</tbody></table></div></section>' +
-    (reasonRows ? '<section class="block"><div class="sec-head"><h2>أسباب عدم الإنجاز</h2></div><div class="t-wrap"><table class="t"><thead><tr><th>السبب</th><th class="n">العدد</th></tr></thead><tbody>' + reasonRows + '</tbody></table></div></section>' : '') +
-    (workRows ? '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2></div><div class="t-wrap"><table class="t"><thead><tr><th>العمل</th><th class="n">التقديرية</th><th class="n">المصروف</th><th>العملة</th></tr></thead><tbody>' + workRows + '</tbody></table></div></section>' : '') +
-    '<div class="form-actions"><button class="btn" type="submit" id="saveBtn">حفظ الأرقام</button><button class="btn ghost" type="button" id="cancelBtn">إلغاء</button>' +
+    (reasonRows ? '<section class="block"><div class="sec-head"><h2>أسباب عدم الإنجاز</h2>' + (N ? '<span class="note">تغيير اسم السبب يغيّره في كل الوحدات التي تستخدمه.</span>' : '') + '</div><div class="t-wrap"><table class="t"><thead><tr><th>السبب</th><th class="n">العدد</th></tr></thead><tbody>' + reasonRows + '</tbody></table></div></section>' : '') +
+    (workRows ? '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2></div><div class="t-wrap"><table class="t"><thead><tr><th>العمل</th><th>النوع</th><th>الموقع</th><th>الحالة</th><th>البدء</th><th>الانتهاء</th><th class="n">التقديرية</th><th class="n">المصروف</th><th>العملة</th></tr></thead><tbody>' + workRows + '</tbody></table></div></section>' : '') +
+    '<div class="form-actions"><button class="btn" type="submit" id="saveBtn">حفظ التعديلات</button><button class="btn ghost" type="button" id="cancelBtn">إلغاء</button>' +
     (d.localCopy ? '<button class="btn ghost sep" type="button" id="copyBtn">تنزيل نسخة من الأرقام</button><button class="btn ghost" type="button" id="loadBtn">استرجاع نسخة</button><input type="file" id="loadFile" accept=".json" hidden aria-label="ملف النسخة"><button class="btn ghost" type="button" id="resetBtn">العودة إلى الأرقام الأصلية</button>' : '') +
     '</div><div class="ferr" id="formMsg" role="alert"></div></form></div>';
 }
@@ -498,26 +516,29 @@ function wireEdit(d) {
   document.getElementById('cancelBtn').onclick = done;
   form.onsubmit = function (ev) {
     ev.preventDefault();
-    var byKpi = {}, works = {}, reasons = [];
-    form.querySelectorAll('input.num').forEach(function (i) {
-      if (i.dataset.kpi) (byKpi[i.dataset.kpi] = byKpi[i.dataset.kpi] || { kpiId: i.dataset.kpi })[i.dataset.f] = i.value;
-      else if (i.dataset.work) (works[i.dataset.work] = works[i.dataset.work] || { id: i.dataset.work })[i.dataset.f] = i.value;
-      else if (i.dataset.reason) reasons.push({ id: i.dataset.reason, count: i.value });
+    var byKpi = {}, works = {}, reasons = {}, unit = null;
+    form.querySelectorAll('[data-kpi],[data-work],[data-reason],[data-unit]').forEach(function (i) {
+      var s = i.dataset;
+      if (s.kpi) (byKpi[s.kpi] = byKpi[s.kpi] || { kpiId: s.kpi })[s.f] = i.value;
+      else if (s.work) (works[s.work] = works[s.work] || { id: s.work })[s.f] = i.value;
+      else if (s.reason) (reasons[s.reason] = reasons[s.reason] || { id: s.reason })[s.f] = i.value;
+      else if (s.unit) (unit = unit || { version: d.unitInfo.version })[s.unit] = i.value;
     });
     var btn = document.getElementById('saveBtn'); btn.disabled = true; msg.textContent = '';
     form.querySelectorAll('.err-row').forEach(function (r) { r.hidden = true; });
     // Each row goes back with the version it was read at, so the server can refuse to overwrite someone else's newer change.
-    d.kpis.forEach(function (r) { if (byKpi[r.id]) byKpi[r.id].version = r.entry ? r.entry.version : 0; });
+    d.kpis.forEach(function (r) { if (byKpi[r.id]) { byKpi[r.id].version = r.entry ? r.entry.version : 0; byKpi[r.id].kpiVersion = r.kpiVersion; } });
     d.works.forEach(function (w) { if (works[w.id]) works[w.id].version = w.version; });
-    reasons.forEach(function (x) { x.version = (d.reasonRows.filter(function (r) { return r.id === x.id; })[0] || {}).version; });
-    api('saveUnit', { id: d.unit.id, period: d.period.id, entries: Object.keys(byKpi).map(function (k) { return byKpi[k]; }), works: Object.keys(works).map(function (k) { return works[k]; }), reasons: reasons }, function (res) {
+    d.reasonRows.forEach(function (r) { if (reasons[r.id]) { reasons[r.id].version = r.version; reasons[r.id].oldName = r.name; } });
+    var vals = function (o) { return Object.keys(o).map(function (k) { return o[k]; }); };
+    api('saveUnit', { id: d.unit.id, period: d.period.id, unit: unit, entries: vals(byKpi), works: vals(works), reasons: vals(reasons) }, function (res) {
       btn.disabled = false;
       if (!res.errors.length) return done();
       res.errors.forEach(function (e) {
         var row = form.querySelector('[data-err="' + e.id + '"]');
         if (row) { row.hidden = false; row.firstChild.textContent = e.message; }
       });
-      msg.textContent = 'لم تُحفظ الأرقام. يرجى تصحيح الأخطاء المبينة أعلاه.';
+      msg.textContent = 'لم تُحفظ التعديلات. يرجى تصحيح الأخطاء المبينة أعلاه.';
     }, function (m) { btn.disabled = false; fail(m); });
   };
   if (!d.localCopy) return;
