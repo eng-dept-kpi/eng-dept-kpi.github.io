@@ -415,9 +415,20 @@ function renderOverview(d) {
 
 function renderUnits(d) {
   var body = '<div class="lead"><div class="wrap head"><div class="crumb"><a href="#">النظرة العامة</a> / الأقسام والشعب</div><h1>الأقسام والشعب</h1><p class="lede">اختر قسماً أو شعبة لعرض تفاصيلها.</p></div></div>' +
-    '<div class="wrap narrow-block">' + unitsBlock(d) + '</div>';
+    '<div class="wrap narrow-block">' + unitsBlock(d) +
+    (d.user && d.user.role === 'admin' ? '<section class="block no-print"><form id="unitForm" class="card" novalidate><h2>إضافة قسم أو شعبة</h2>' +
+      field('nuName', 'الاسم', 'text', 'maxlength="200"') +
+      '<div class="fld"><label for="nuLabel">النوع</label><select id="nuLabel"><option value="قسم">قسم</option><option value="شعبة">شعبة</option></select></div>' +
+      '<p class="note">بعد الإضافة افتح القسم أو الشعبة واضغط "تعديل البيانات" لإضافة مؤشراته.</p>' +
+      '<div class="ferr" id="nuMsg" role="alert"></div><div class="form-actions"><button class="btn" id="nuBtn" type="submit">إضافة</button></div></form></section>' : '') + '</div>';
   document.getElementById('app').innerHTML = shell(d, 'units', body);
   wire();
+  var uf = document.getElementById('unitForm');
+  if (uf) uf.onsubmit = function (ev) {
+    ev.preventDefault();
+    var b = document.getElementById('nuBtn'), m = document.getElementById('nuMsg'); busy(b, true); m.textContent = '';
+    api('admin.addUnit', { name: val('nuName'), label: val('nuLabel') }, function (r) { state.editing = true; location.hash = '#unit/' + r.id; }, function (e) { busy(b, false); m.textContent = e; });
+  };
 }
 
 function kpiTable(kpis) {
@@ -506,7 +517,7 @@ function editForm(d) {
   d.works.forEach(function (w) { if (w.type) types[w.type] = 1; });
   var typeList = '<datalist id="workTypes">' + Object.keys(types).map(function (t) { return '<option value="' + esc(t) + '">'; }).join('') + '</datalist>';
   return '<div class="wrap narrow-block no-print"><form id="editForm" novalidate>' + unitBlock +
-    '<section class="block"><div class="sec-head"><h2>المؤشرات</h2><span class="note">يجب أن يساوي مجموع الحالات عدد الوارد. اترك صف المؤشر فارغاً إذا لم تتوفر أرقامه.</span></div><div class="t-wrap"><table class="t"><thead><tr><th>المؤشر</th>' + EDIT_FIELDS.map(function (f) { return '<th class="n">' + f[1] + '</th>'; }).join('') + '</tr></thead><tbody>' + kpiRows + '</tbody></table></div></section>' +
+    '<section class="block"><div class="sec-head"><h2>المؤشرات</h2><span class="note">يجب أن يساوي مجموع الحالات عدد الوارد. اترك صف المؤشر فارغاً إذا لم تتوفر أرقامه.</span></div><div class="t-wrap"><table class="t"><thead><tr><th>المؤشر</th>' + EDIT_FIELDS.map(function (f) { return '<th class="n">' + f[1] + '</th>'; }).join('') + '</tr></thead><tbody id="kpiBody">' + kpiRows + '</tbody></table></div>' + (N ? '<div class="form-actions"><button class="btn ghost" type="button" id="addKpiBtn">+ إضافة مؤشر</button><span class="note">مثلاً نوع طلب جديد. يمكن ترك أرقامه فارغة.</span></div>' : '') + '</section>' +
     (reasonRows ? '<section class="block"><div class="sec-head"><h2>أسباب عدم الإنجاز</h2>' + (N ? '<span class="note">تغيير اسم السبب يغيّره في كل الأقسام والشعب التي تستخدمه.</span>' : '') + '</div><div class="t-wrap"><table class="t"><thead><tr><th>السبب</th><th class="n">العدد</th></tr></thead><tbody>' + reasonRows + '</tbody></table></div></section>' : '') +
     '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2><button class="btn ghost" type="button" id="addWorkBtn">+ إضافة عمل</button></div>' + typeList +
       '<div class="t-wrap"><table class="t"><thead><tr><th>العمل</th><th>النوع</th><th>الموقع</th><th>الحالة</th><th>البدء</th><th>الانتهاء</th><th class="n">التقديرية</th><th class="n">المصروف</th><th>العملة</th>' + (N ? '<th></th>' : '') + '</tr></thead><tbody id="workBody">' + workRows + '</tbody></table></div>' +
@@ -514,6 +525,13 @@ function editForm(d) {
     '<div class="form-actions"><button class="btn" type="submit" id="saveBtn">حفظ التعديلات</button><button class="btn ghost" type="button" id="cancelBtn">إلغاء</button>' +
     (d.localCopy ? '<button class="btn ghost sep" type="button" id="copyBtn">تنزيل نسخة من الأرقام</button><button class="btn ghost" type="button" id="loadBtn">استرجاع نسخة</button><input type="file" id="loadFile" accept=".json" hidden aria-label="ملف النسخة"><button class="btn ghost" type="button" id="resetBtn">العودة إلى الأرقام الأصلية</button>' : '') +
     '</div><div class="ferr" id="formMsg" role="alert"></div></form></div>';
+}
+// An empty row for a new indicator (admin). Its name and, optionally, this period's numbers.
+var newKpiCount = 0;
+function newKpiRow() {
+  var id = 'newk' + (++newKpiCount);
+  var cells = EDIT_FIELDS.map(function (f) { return '<td class="n">' + numInput('data-newkpi="' + id + '" data-f="' + f[0] + '"', f[1], '') + '</td>'; }).join('');
+  return '<tr class="new-row"><td>' + txtInput('data-newkpi="' + id + '" data-f="name"', 'اسم المؤشر الجديد', '', 'wide') + '<button class="linkish" type="button" data-dropk="' + id + '">حذف السطر</button></td>' + cells + '</tr>' + errRow(id, 7);
 }
 // An empty row for a new work. Every field is filled in by the person adding it.
 var newWorkCount = 0;
@@ -529,6 +547,14 @@ function newWorkRow(N) {
 function wireEdit(d) {
   var form = document.getElementById('editForm'), msg = document.getElementById('formMsg');
   var body = document.getElementById('workBody');
+  var kb = document.getElementById('addKpiBtn');
+  if (kb) kb.onclick = function () {
+    var body = document.getElementById('kpiBody');
+    body.insertAdjacentHTML('beforeend', newKpiRow());
+    var rows = body.querySelectorAll('tr.new-row'), last = rows[rows.length - 1];
+    last.querySelector('input').focus();
+    last.querySelector('[data-dropk]').onclick = function () { var e = last.nextElementSibling; if (e && e.classList.contains('err-row')) e.remove(); last.remove(); };
+  };
   document.getElementById('addWorkBtn').onclick = function () {
     body.insertAdjacentHTML('beforeend', newWorkRow(d.canNames));
     var nw = document.getElementById('noWorks'); if (nw) nw.hidden = true;
@@ -541,10 +567,11 @@ function wireEdit(d) {
   document.getElementById('cancelBtn').onclick = done;
   form.onsubmit = function (ev) {
     ev.preventDefault();
-    var byKpi = {}, works = {}, reasons = {}, unit = null, added = {}, removed = [];
-    form.querySelectorAll('[data-kpi],[data-work],[data-reason],[data-unit],[data-new],[data-remove]').forEach(function (i) {
+    var byKpi = {}, works = {}, reasons = {}, unit = null, added = {}, removed = [], newKpiRows = {};
+    form.querySelectorAll('[data-kpi],[data-work],[data-reason],[data-unit],[data-new],[data-remove],[data-newkpi]').forEach(function (i) {
       var s = i.dataset;
-      if (s.remove) { if (i.checked) removed.push({ id: s.remove, version: (d.works.filter(function (w) { return w.id === s.remove; })[0] || {}).version }); }
+      if (s.newkpi) (newKpiRows[s.newkpi] = newKpiRows[s.newkpi] || { tmpId: s.newkpi })[s.f] = i.value;
+      else if (s.remove) { if (i.checked) removed.push({ id: s.remove, version: (d.works.filter(function (w) { return w.id === s.remove; })[0] || {}).version }); }
       else if (s.new) (added[s.new] = added[s.new] || { tmpId: s.new })[s.f] = i.value;
       else if (s.kpi) (byKpi[s.kpi] = byKpi[s.kpi] || { kpiId: s.kpi })[s.f] = i.value;
       else if (s.work) (works[s.work] = works[s.work] || { id: s.work })[s.f] = i.value;
@@ -561,7 +588,8 @@ function wireEdit(d) {
     // A new row left completely empty is ignored.
     var newWorks = vals(added).filter(function (w) { return ['title', 'type', 'location', 'startDate', 'endDate', 'estimatedCost', 'spent'].some(function (f) { return String(w[f] || '').trim(); }); });
     if (removed.length && !window.confirm('سيُزال ' + removed.length + ' من الأعمال من الصفحة (يبقى محفوظاً في الأرشيف). هل تريد المتابعة؟')) { btn.disabled = false; return; }
-    api('saveUnit', { id: d.unit.id, period: d.period.id, unit: unit, entries: vals(byKpi), works: vals(works), reasons: vals(reasons), newWorks: newWorks, removeWorks: removed }, function (res) {
+    api('saveUnit', { id: d.unit.id, period: d.period.id, unit: unit, entries: vals(byKpi), works: vals(works), reasons: vals(reasons), newWorks: newWorks, removeWorks: removed,
+      newKpis: vals(newKpiRows).filter(function (k) { return Object.keys(k).some(function (f) { return f !== 'tmpId' && String(k[f] || '').trim(); }); }) }, function (res) {
       btn.disabled = false;
       if (!res.errors.length) return done();
       res.errors.forEach(function (e) {
