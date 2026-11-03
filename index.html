@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700;800&display=swap" rel="stylesheet">
   <style>
 :root{
-  --white:#fff; --soft:#f6f4ee; --ink:#1a2320; --muted:#5a635e; --faint:#747c76; --line:#ddd9ce; --hair:#ece9e1;
+  --white:#fff; --soft:#f6f4ee; --ink:#1a2320; --muted:#5a635e; --faint:#656d67; --line:#ddd9ce; --hair:#ece9e1;
   --pri:#0e4a40; --pri-2:#0a352e; --brass:#a98a45;
   --on:#14704f; --on-soft:#e5f1eb; --on-zone:#d9ebe2; --risk:#8a5a06; --risk-fill:#c08a1e; --risk-soft:#f9f0dc; --risk-zone:#f5e7c7;
   --bad:#a02d24; --bad-soft:#f8e7e4; --bad-zone:#f3dcd8; --none:#566270; --none-soft:#edeef0;
@@ -20,7 +20,7 @@
   --page:1600px; --pad:clamp(16px,3vw,48px);
 }
 *{box-sizing:border-box}
-html{font-size:clamp(14px,.38vw + 9px,17px)}
+html{font-size:clamp(16px,.2vw + 13.3px,18px)}
 html,body{margin:0;background:var(--white);color:var(--ink);font-family:"Almarai",Tahoma,Arial,sans-serif;line-height:1.6}
 button,select{font:inherit;color:inherit}
 a{color:inherit}
@@ -159,7 +159,8 @@ input.num{width:5.6rem;min-height:44px;border:1px solid var(--line);border-radiu
 .forgot{margin-top:1.1rem;border-top:1px solid var(--hair);padding-top:.8rem}
 .forgot summary{cursor:pointer;color:var(--pri);font-weight:700;min-height:32px}
 .who{display:flex;align-items:center;gap:.7rem;font-size:.92rem;padding-inline-start:.6rem;border-inline-start:1px solid var(--line)}
-.who a{color:var(--pri);font-weight:700;text-decoration:none}
+.who a{color:var(--pri);font-weight:700;text-decoration:none;min-height:44px;display:inline-flex;align-items:center}
+.who .linkish{min-height:44px}
 .linkish{background:none;border:0;padding:.3rem 0;color:var(--pri);text-decoration:underline;cursor:pointer;font:inherit;min-height:32px}
 .codes{columns:2;font-size:1.05rem;font-weight:700;padding-inline-start:1.6rem}
 .roles{margin:0;padding-inline-start:1.2rem;line-height:1.9}
@@ -185,8 +186,9 @@ footer .wrap{display:flex;justify-content:space-between;gap:1rem;padding-block:.
   .mast .wrap{gap:.4rem 1.4rem}
 }
 @media (max-width:760px){
-  html{font-size:15px}
-  .nav{width:100%;border-top:1px solid var(--hair)}
+  html{font-size:16px}
+  .nav{width:100%;border-top:1px solid var(--hair);flex-wrap:wrap}
+  .nav a{padding:0 .5rem;font-size:.9rem;white-space:nowrap}
   .tools select{flex:1;min-width:0;font-size:.88rem}
   .head h1{font-size:1.6rem}
   .figs .wrap{grid-template-columns:repeat(2,minmax(0,1fr));padding-inline:16px}
@@ -198,6 +200,18 @@ footer .wrap{display:flex;justify-content:space-between;gap:1rem;padding-block:.
   .u-name{grid-column:1;grid-row:1}.u-val{grid-column:2;grid-row:1}.u-grid .pill{grid-column:3;grid-row:1}
   .track{grid-column:1/-1;grid-row:2}.u-rec,.delta{grid-row:3;text-align:right}.u-rec{grid-column:1}.delta{grid-column:2/-1}
   .chev{display:none}.m-only{display:inline}
+}
+[hidden]{display:none!important}
+@media (max-width:640px){
+  #editForm .t-wrap{overflow:visible}
+  #editForm table.t thead{display:none}
+  #editForm table.t,#editForm table.t tbody{display:block}
+  #editForm table.t tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem .7rem;padding:.8rem;margin-bottom:.7rem;border:1px solid var(--line);background:var(--white)}
+  #editForm table.t tr.err-row{display:block;padding:0;border:0;margin-top:-.5rem}
+  #editForm table.t td{display:block;padding:0;border:0}
+  #editForm table.t tr>td:first-child{grid-column:1/-1;font-weight:700}
+  #editForm table.t td[data-label]::before{content:attr(data-label);display:block;font-size:.8rem;color:var(--muted);margin-bottom:.15rem}
+  #editForm input.num,#editForm .txt,#editForm .txt.wide,#editForm .txt.short{width:100%;min-width:0}
 }
 @media (min-height:950px) and (min-width:1400px){a.u-row{min-height:3.7rem}.row3{min-height:2.15rem}.block{margin-bottom:1.8rem}.head{padding-block:1.7rem 1.4rem}.fig{padding-block:1.2rem}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -497,21 +511,21 @@ function editForm(d) {
   var unitBlock = N && d.unitInfo ? '<section class="block"><div class="sec-head"><h2>القسم أو الشعبة</h2></div><table class="t"><tbody><tr><td>الاسم</td><td>' + txtInput('data-unit="name"', 'الاسم', d.unitInfo.name, 'wide') + '</td></tr>' +
     '<tr><td>التصنيف (قسم أو شعبة)</td><td>' + txtInput('data-unit="label"', 'التصنيف', d.unitInfo.label) + '</td></tr>' + errRow('unit', 2) + '</tbody></table></section>' : '';
   var kpiRows = d.kpis.map(function (r) {
-    var cells = EDIT_FIELDS.map(function (f) { return '<td class="n">' + numInput('data-kpi="' + esc(r.id) + '" data-f="' + f[0] + '"', r.name + ': ' + f[1], r.entry ? r.entry[f[0]] : '') + '</td>'; }).join('');
+    var cells = EDIT_FIELDS.map(function (f) { return '<td class="n" data-label="' + f[1] + '">' + numInput('data-kpi="' + esc(r.id) + '" data-f="' + f[0] + '"', r.name + ': ' + f[1], r.entry ? r.entry[f[0]] : '') + '</td>'; }).join('');
     return '<tr><td>' + (N ? txtInput('data-kpi="' + esc(r.id) + '" data-f="name"', 'اسم المؤشر', r.name, 'wide') : esc(r.name)) + '</td>' + cells + '</tr>' + errRow(r.id, 7);
   }).join('');
   var reasonRows = d.reasonRows.map(function (r) {
-    return '<tr><td>' + (N ? txtInput('data-reason="' + esc(r.id) + '" data-f="name"', 'اسم السبب', r.name, 'wide') : esc(r.name)) + '</td><td class="n">' + numInput('data-reason="' + esc(r.id) + '" data-f="count"', r.name, r.count) + '</td></tr>' + errRow(r.id, 2);
+    return '<tr><td>' + (N ? txtInput('data-reason="' + esc(r.id) + '" data-f="name"', 'اسم السبب', r.name, 'wide') : esc(r.name)) + '</td><td class="n" data-label="العدد">' + numInput('data-reason="' + esc(r.id) + '" data-f="count"', r.name, r.count) + '</td></tr>' + errRow(r.id, 2);
   }).join('');
   var statusOpts = function (cur) { return '<option value=""' + (cur ? '' : ' selected') + '>غير محددة</option>' + Object.keys(WORK_STATUS).map(function (k) { return '<option value="' + k + '"' + (cur === k ? ' selected' : '') + '>' + esc(WORK_STATUS[k]) + '</option>'; }).join(''); };
   var workRows = d.works.map(function (w) {
     var a = function (f) { return 'data-work="' + esc(w.id) + '" data-f="' + f + '"'; };
     var T = function (f, label, cls) { return N ? txtInput(a(f), label, w[f], cls) : esc(w[f] || '-'); };
-    return '<tr><td>' + T('title', 'اسم العمل', 'wide') + (w.fromPeriod ? '<span class="reason">من ' + esc(w.fromPeriod) + '</span>' : '') + '</td><td>' + T('type', 'النوع') + '</td><td>' + T('location', 'الموقع') + '</td>' +
-      '<td><select class="txt" ' + a('status') + ' aria-label="الحالة">' + statusOpts(w.status) + '</select></td>' +
-      '<td><input class="txt" type="date" ' + a('startDate') + ' aria-label="البدء" value="' + esc(w.startDate) + '"></td><td><input class="txt" type="date" ' + a('endDate') + ' aria-label="الانتهاء" value="' + esc(w.endDate) + '"></td>' +
-      '<td class="n">' + numInput(a('estimatedCost'), w.title + ': التقديرية', w.estimatedCost) + '</td><td class="n">' + numInput(a('spent'), w.title + ': المصروف', w.spent) + '</td>' +
-      '<td>' + T('currency', 'العملة', 'short') + '</td>' + (N ? '<td><label class="chk"><input type="checkbox" data-remove="' + esc(w.id) + '"> إزالة</label></td>' : '') + '</tr>' + errRow(w.id, N ? 10 : 9);
+    return '<tr><td>' + T('title', 'اسم العمل', 'wide') + (w.fromPeriod ? '<span class="reason">من ' + esc(w.fromPeriod) + '</span>' : '') + '</td><td data-label="النوع">' + T('type', 'النوع') + '</td><td data-label="الموقع">' + T('location', 'الموقع') + '</td>' +
+      '<td data-label="الحالة"><select class="txt" ' + a('status') + ' aria-label="الحالة">' + statusOpts(w.status) + '</select></td>' +
+      '<td data-label="البدء"><input class="txt" type="date" ' + a('startDate') + ' aria-label="البدء" value="' + esc(w.startDate) + '"></td><td data-label="الانتهاء"><input class="txt" type="date" ' + a('endDate') + ' aria-label="الانتهاء" value="' + esc(w.endDate) + '"></td>' +
+      '<td class="n" data-label="التكلفة التقديرية">' + numInput(a('estimatedCost'), w.title + ': التقديرية', w.estimatedCost) + '</td><td class="n" data-label="المصروف">' + numInput(a('spent'), w.title + ': المصروف', w.spent) + '</td>' +
+      '<td data-label="العملة">' + T('currency', 'العملة', 'short') + '</td>' + (N ? '<td><label class="chk"><input type="checkbox" data-remove="' + esc(w.id) + '"> إزالة</label></td>' : '') + '</tr>' + errRow(w.id, N ? 10 : 9);
   }).join('');
   var types = {};
   d.works.forEach(function (w) { if (w.type) types[w.type] = 1; });
@@ -530,7 +544,7 @@ function editForm(d) {
 var newKpiCount = 0;
 function newKpiRow() {
   var id = 'newk' + (++newKpiCount);
-  var cells = EDIT_FIELDS.map(function (f) { return '<td class="n">' + numInput('data-newkpi="' + id + '" data-f="' + f[0] + '"', f[1], '') + '</td>'; }).join('');
+  var cells = EDIT_FIELDS.map(function (f) { return '<td class="n" data-label="' + f[1] + '">' + numInput('data-newkpi="' + id + '" data-f="' + f[0] + '"', f[1], '') + '</td>'; }).join('');
   return '<tr class="new-row"><td>' + txtInput('data-newkpi="' + id + '" data-f="name"', 'اسم المؤشر الجديد', '', 'wide') + '<button class="linkish" type="button" data-dropk="' + id + '">حذف السطر</button></td>' + cells + '</tr>' + errRow(id, 7);
 }
 // An empty row for a new work. Every field is filled in by the person adding it.
@@ -538,11 +552,11 @@ var newWorkCount = 0;
 function newWorkRow(N) {
   var id = 'new' + (++newWorkCount), a = function (f) { return 'data-new="' + id + '" data-f="' + f + '"'; };
   var opts = '<option value="">غير محددة</option>' + Object.keys(WORK_STATUS).map(function (k) { return '<option value="' + k + '"' + (k === 'ongoing' ? ' selected' : '') + '>' + esc(WORK_STATUS[k]) + '</option>'; }).join('');
-  return '<tr class="new-row"><td>' + txtInput(a('title'), 'اسم العمل الجديد', '', 'wide') + '</td><td>' + txtInput(a('type') + ' list="workTypes"', 'النوع', '') + '</td><td>' + txtInput(a('location'), 'الموقع', '') + '</td>' +
-    '<td><select class="txt" ' + a('status') + ' aria-label="الحالة">' + opts + '</select></td>' +
-    '<td><input class="txt" type="date" ' + a('startDate') + ' aria-label="البدء"></td><td><input class="txt" type="date" ' + a('endDate') + ' aria-label="الانتهاء"></td>' +
-    '<td class="n">' + numInput(a('estimatedCost'), 'التكلفة التقديرية', '') + '</td><td class="n">' + numInput(a('spent'), 'المصروف', '') + '</td>' +
-    '<td>' + txtInput(a('currency'), 'العملة', 'شيكل', 'short') + '</td>' + (N ? '<td><button class="linkish" type="button" data-drop="' + id + '">حذف السطر</button></td>' : '<td><button class="linkish" type="button" data-drop="' + id + '">حذف السطر</button></td>') + '</tr>' + errRow(id, 10);
+  return '<tr class="new-row"><td>' + txtInput(a('title'), 'اسم العمل الجديد', '', 'wide') + '</td><td data-label="النوع">' + txtInput(a('type') + ' list="workTypes"', 'النوع', '') + '</td><td data-label="الموقع">' + txtInput(a('location'), 'الموقع', '') + '</td>' +
+    '<td data-label="الحالة"><select class="txt" ' + a('status') + ' aria-label="الحالة">' + opts + '</select></td>' +
+    '<td data-label="البدء"><input class="txt" type="date" ' + a('startDate') + ' aria-label="البدء"></td><td data-label="الانتهاء"><input class="txt" type="date" ' + a('endDate') + ' aria-label="الانتهاء"></td>' +
+    '<td class="n" data-label="التكلفة التقديرية">' + numInput(a('estimatedCost'), 'التكلفة التقديرية', '') + '</td><td class="n" data-label="المصروف">' + numInput(a('spent'), 'المصروف', '') + '</td>' +
+    '<td data-label="العملة">' + txtInput(a('currency'), 'العملة', 'شيكل', 'short') + '</td>' + (N ? '<td><button class="linkish" type="button" data-drop="' + id + '">حذف السطر</button></td>' : '<td><button class="linkish" type="button" data-drop="' + id + '">حذف السطر</button></td>') + '</tr>' + errRow(id, 10);
 }
 function wireEdit(d) {
   var form = document.getElementById('editForm'), msg = document.getElementById('formMsg');
