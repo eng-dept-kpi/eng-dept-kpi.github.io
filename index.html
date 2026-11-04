@@ -300,6 +300,8 @@ function icon(n, size) { return '<svg width="' + (size || 14) + '" height="' + (
 function pct(v) { return v === null || v === undefined ? '-' : v.toFixed(1) + '%'; }
 function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
 function pill(st) { return '<span class="pill s-' + st + '">' + icon(st) + esc(STATUS_LABEL[st]) + '</span>'; }
+// A work's single money figure ("financial value"): the amount entered, or an older estimate when that is all there is.
+function workValue(w) { var h = function (v) { return v !== '' && v !== null && v !== undefined; }; return h(w.spent) ? Number(w.spent) : h(w.estimatedCost) ? Number(w.estimatedCost) : null; }
 function moneyLines(spent) {
   var keys = Object.keys(spent || {});
   return keys.length ? keys.map(function (c) { return '<span class="ltr">' + fmt(spent[c]) + '</span> ' + esc(c); }).join(' · ') : '-';
@@ -405,7 +407,7 @@ function reasonsBlock(list, limit) {
 function worksBlock(t) {
   return '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2></div><div class="work-sum">' +
     '<div><div class="v tn">' + fmt(t.finished) + '</div><div class="k">منتهية</div></div><div><div class="v tn">' + fmt(t.ongoing + t.stopped) + '</div><div class="k">جارية أو متوقفة</div></div>' +
-    '<div><div class="v tn" style="font-size:1.02rem">' + moneyLines(t.spent) + '</div><div class="k">المصروف كما أفادت الأقسام والشعب</div></div></div></section>';
+    '<div><div class="v tn" style="font-size:1.02rem">' + moneyLines(t.spent) + '</div><div class="k">القيمة المالية كما أفادت الأقسام والشعب</div></div></div></section>';
 }
 
 // A shortcut for section heads and division editors: straight to their edit screen for the open month.
@@ -476,9 +478,9 @@ function kpiTable(kpis) {
 function worksTable(works) {
   if (!works.length) return '<div class="note" style="padding-top:.5rem">لا توجد أعمال مسجلة لهذه الفترة</div>';
   var rows = works.map(function (w) {
-    return '<tr><td>' + esc(w.title) + (w.fromPeriod ? '<span class="reason">من ' + esc(w.fromPeriod) + '</span>' : '') + (w.reason ? '<span class="reason">السبب: ' + esc(w.reason) + '</span>' : '') + '</td><td>' + esc(w.type) + '</td><td>' + esc(w.location || '-') + '</td><td>' + esc(WORK_STATUS[w.status] || '-') + '</td><td class="n">' + esc(w.startDate || '-') + '</td><td class="n">' + esc(w.endDate || '-') + '</td><td class="n">' + (w.estimatedCost === '' ? '-' : fmt(w.estimatedCost)) + '</td><td class="n">' + (w.spent === '' ? '-' : fmt(w.spent)) + '</td><td>' + (w.estimatedCost === '' && w.spent === '' ? '-' : esc(w.currency)) + '</td></tr>';
+    return '<tr><td>' + esc(w.title) + (w.fromPeriod ? '<span class="reason">من ' + esc(w.fromPeriod) + '</span>' : '') + (w.reason ? '<span class="reason">السبب: ' + esc(w.reason) + '</span>' : '') + '</td><td>' + esc(w.type) + '</td><td>' + esc(w.location || '-') + '</td><td>' + esc(WORK_STATUS[w.status] || '-') + '</td><td class="n">' + esc(w.startDate || '-') + '</td><td class="n">' + esc(w.endDate || '-') + '</td><td class="n">' + (workValue(w) === null ? '-' : fmt(workValue(w))) + '</td><td>' + (workValue(w) === null ? '-' : esc(w.currency)) + '</td></tr>';
   }).join('');
-  return '<div class="t-wrap"><table class="t"><thead><tr><th>العمل</th><th>النوع</th><th>الموقع</th><th>الحالة</th><th class="n">البدء</th><th class="n">الانتهاء</th><th class="n">التقديرية</th><th class="n">المصروف</th><th>العملة</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  return '<div class="t-wrap"><table class="t"><thead><tr><th>العمل</th><th>النوع</th><th>الموقع</th><th>الحالة</th><th class="n">البدء</th><th class="n">الانتهاء</th><th class="n">القيمة المالية</th><th>العملة</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
 
 function tasksTable(tasks) {
@@ -496,7 +498,7 @@ function historyTable(h) {
 
 function renderUnit(d) {
   var u = d.unit, t = u.totals, missing = u.score === null, wt = { finished: 0, spent: {} };
-  d.works.forEach(function (w) { if (w.status === 'finished') wt.finished++; if (w.spent !== '' && w.currency) wt.spent[w.currency] = (wt.spent[w.currency] || 0) + Number(w.spent); });
+  d.works.forEach(function (w) { if (w.status === 'finished') wt.finished++; if (workValue(w) !== null && w.currency) wt.spent[w.currency] = (wt.spent[w.currency] || 0) + workValue(w); });
   var body = '<div class="lead"><div class="wrap head"><div class="crumb"><a href="#">النظرة العامة</a> / <a href="#units">الأقسام والشعب</a> / ' + esc(u.name) + '</div>' +
       '<div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-end"><div><h1>' + esc(u.name) + '</h1><p class="lede">' + esc(d.period.label) + (d.period.closed ? ' · <b>فترة مغلقة</b>' : '') + (d.lastEdit && !missing ? ' · آخر تحديث: ' + esc(d.lastEdit) : '') + '</p></div>' +
       (d.canEdit && !state.editing ? '<button class="btn ghost no-print" id="editBtn">تعديل البيانات</button>' : '') + '</div></div>' +
@@ -508,7 +510,7 @@ function renderUnit(d) {
     '</div></div></div>' + (state.editing ? editForm(d) :
     '<div class="wrap cols"><div>' +
       '<section class="block"><div class="sec-head"><h2>المؤشرات</h2></div>' + kpiTable(d.kpis) + keyHtml({ on: Number(d.settings.onTrackMin), at: Number(d.settings.atRiskMin) }) + '</section>' +
-      '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2><span class="note">منتهية ' + wt.finished + ' · المصروف ' + moneyLines(wt.spent) + ' · كما أفاد القسم أو الشعبة</span></div>' + worksTable(d.works) + '</section>' +
+      '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2><span class="note">منتهية ' + wt.finished + ' · القيمة المالية ' + moneyLines(wt.spent) + ' · كما أفاد القسم أو الشعبة</span></div>' + worksTable(d.works) + '</section>' +
       '<section class="block"><div class="sec-head"><h2>المهام</h2></div>' + tasksTable(d.tasks) + '</section>' +
     '</div><div>' + reasonsBlock(d.reasons, 8) +
       '<section class="block"><div class="sec-head"><h2>السجل حسب الفترة</h2></div>' + historyTable(d.history) + '</section>' +
@@ -543,8 +545,8 @@ function editForm(d) {
     return '<tr><td>' + T('title', 'اسم العمل', 'wide') + (w.fromPeriod ? '<span class="reason">من ' + esc(w.fromPeriod) + '</span>' : '') + '</td><td data-label="النوع">' + T('type', 'النوع') + '</td><td data-label="الموقع">' + T('location', 'الموقع') + '</td>' +
       '<td data-label="الحالة"><select class="txt" ' + a('status') + ' aria-label="الحالة">' + statusOpts(w.status) + '</select></td>' +
       '<td data-label="البدء"><input class="txt" type="date" ' + a('startDate') + ' aria-label="البدء" value="' + esc(w.startDate) + '"></td><td data-label="الانتهاء"><input class="txt" type="date" ' + a('endDate') + ' aria-label="الانتهاء" value="' + esc(w.endDate) + '"></td>' +
-      '<td class="n" data-label="التكلفة التقديرية">' + numInput(a('estimatedCost'), w.title + ': التقديرية', w.estimatedCost) + '</td><td class="n" data-label="المصروف">' + numInput(a('spent'), w.title + ': المصروف', w.spent) + '</td>' +
-      '<td data-label="العملة">' + T('currency', 'العملة', 'short') + '</td>' + (N ? '<td><label class="chk"><input type="checkbox" data-remove="' + esc(w.id) + '"> إزالة</label></td>' : '') + '</tr>' + errRow(w.id, N ? 10 : 9);
+      '<td class="n" data-label="القيمة المالية">' + numInput(a('value'), w.title + ': القيمة المالية', workValue(w)) + '</td>' +
+      '<td data-label="العملة">' + T('currency', 'العملة', 'short') + '</td>' + (N ? '<td><label class="chk"><input type="checkbox" data-remove="' + esc(w.id) + '"> إزالة</label></td>' : '') + '</tr>' + errRow(w.id, N ? 9 : 8);
   }).join('');
   var types = {};
   d.works.forEach(function (w) { if (w.type) types[w.type] = 1; });
@@ -553,7 +555,7 @@ function editForm(d) {
     '<section class="block"><div class="sec-head"><h2>المؤشرات</h2><span class="note">يجب أن يساوي مجموع الحالات عدد الوارد. اترك صف المؤشر فارغاً إذا لم تتوفر أرقامه.</span></div><div class="t-wrap"><table class="t"><thead><tr><th>المؤشر</th>' + EDIT_FIELDS.map(function (f) { return '<th class="n">' + f[1] + '</th>'; }).join('') + '</tr></thead><tbody id="kpiBody">' + kpiRows + '</tbody></table></div>' + (N ? '<div class="form-actions"><button class="btn ghost" type="button" id="addKpiBtn">+ إضافة مؤشر</button><span class="note">مثلاً نوع طلب جديد. يمكن ترك أرقامه فارغة.</span></div>' : '') + '</section>' +
     (reasonRows ? '<section class="block"><div class="sec-head"><h2>أسباب عدم الإنجاز</h2>' + (N ? '<span class="note">تغيير اسم السبب يغيّره في كل الأقسام والشعب التي تستخدمه.</span>' : '') + '</div><div class="t-wrap"><table class="t"><thead><tr><th>السبب</th><th class="n">العدد</th></tr></thead><tbody>' + reasonRows + '</tbody></table></div></section>' : '') +
     '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2><button class="btn ghost" type="button" id="addWorkBtn">+ إضافة عمل</button></div>' + typeList +
-      '<div class="t-wrap"><table class="t"><thead><tr><th>العمل</th><th>النوع</th><th>الموقع</th><th>الحالة</th><th>البدء</th><th>الانتهاء</th><th class="n">التقديرية</th><th class="n">المصروف</th><th>العملة</th>' + (N ? '<th></th>' : '') + '</tr></thead><tbody id="workBody">' + workRows + '</tbody></table></div>' +
+      '<div class="t-wrap"><table class="t"><thead><tr><th>العمل</th><th>النوع</th><th>الموقع</th><th>الحالة</th><th>البدء</th><th>الانتهاء</th><th class="n">القيمة المالية</th><th>العملة</th>' + (N ? '<th></th>' : '') + '</tr></thead><tbody id="workBody">' + workRows + '</tbody></table></div>' +
       (workRows ? '' : '<p class="note" id="noWorks">لا توجد أعمال مسجلة. اضغط "إضافة عمل" لإضافة أول عمل.</p>') + '</section>' +
     '<div class="form-actions"><button class="btn" type="submit" id="saveBtn">حفظ التعديلات</button><button class="btn ghost" type="button" id="cancelBtn">إلغاء</button>' +
     (d.localCopy ? '<button class="btn ghost sep" type="button" id="copyBtn">تنزيل نسخة من الأرقام</button><button class="btn ghost" type="button" id="loadBtn">استرجاع نسخة</button><input type="file" id="loadFile" accept=".json" hidden aria-label="ملف النسخة"><button class="btn ghost" type="button" id="resetBtn">العودة إلى الأرقام الأصلية</button>' : '') +
@@ -574,7 +576,7 @@ function newWorkRow(N) {
   return '<tr class="new-row"><td>' + txtInput(a('title'), 'اسم العمل الجديد', '', 'wide') + '</td><td data-label="النوع">' + txtInput(a('type') + ' list="workTypes"', 'النوع', '') + '</td><td data-label="الموقع">' + txtInput(a('location'), 'الموقع', '') + '</td>' +
     '<td data-label="الحالة"><select class="txt" ' + a('status') + ' aria-label="الحالة">' + opts + '</select></td>' +
     '<td data-label="البدء"><input class="txt" type="date" ' + a('startDate') + ' aria-label="البدء"></td><td data-label="الانتهاء"><input class="txt" type="date" ' + a('endDate') + ' aria-label="الانتهاء"></td>' +
-    '<td class="n" data-label="التكلفة التقديرية">' + numInput(a('estimatedCost'), 'التكلفة التقديرية', '') + '</td><td class="n" data-label="المصروف">' + numInput(a('spent'), 'المصروف', '') + '</td>' +
+    '<td class="n" data-label="القيمة المالية">' + numInput(a('value'), 'القيمة المالية', '') + '</td>' +
     '<td data-label="العملة">' + txtInput(a('currency'), 'العملة', 'شيكل', 'short') + '</td>' + (N ? '<td><button class="linkish" type="button" data-drop="' + id + '">حذف السطر</button></td>' : '<td><button class="linkish" type="button" data-drop="' + id + '">حذف السطر</button></td>') + '</tr>' + errRow(id, 10);
 }
 function wireEdit(d) {
@@ -618,8 +620,11 @@ function wireEdit(d) {
     d.works.forEach(function (w) { if (works[w.id]) works[w.id].version = w.version; });
     d.reasonRows.forEach(function (r) { if (reasons[r.id]) { reasons[r.id].version = r.version; reasons[r.id].oldName = r.name; } });
     var vals = function (o) { return Object.keys(o).map(function (k) { return o[k]; }); };
+    function oneValue(w) { if (w.value !== undefined) { w.spent = w.value; w.estimatedCost = ''; delete w.value; } return w; }
+    Object.keys(works).forEach(function (k) { oneValue(works[k]); });
+    Object.keys(added).forEach(function (k) { oneValue(added[k]); });
     // A new row left completely empty is ignored.
-    var newWorks = vals(added).filter(function (w) { return ['title', 'type', 'location', 'startDate', 'endDate', 'estimatedCost', 'spent'].some(function (f) { return String(w[f] || '').trim(); }); });
+    var newWorks = vals(added).filter(function (w) { return ['title', 'type', 'location', 'startDate', 'endDate', 'spent'].some(function (f) { return String(w[f] || '').trim(); }); });
     if (removed.length && !window.confirm('سيُزال ' + removed.length + ' من الأعمال من الصفحة (يبقى محفوظاً في الأرشيف). هل تريد المتابعة؟')) { btn.disabled = false; return; }
     api('saveUnit', { id: d.unit.id, period: d.period.id, unit: unit, entries: vals(byKpi), works: vals(works), reasons: vals(reasons), newWorks: newWorks, removeWorks: removed,
       newKpis: vals(newKpiRows).filter(function (k) { return Object.keys(k).some(function (f) { return f !== 'tmpId' && String(k[f] || '').trim(); }); }) }, function (res) {
