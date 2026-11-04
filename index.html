@@ -149,6 +149,14 @@ input.num{width:5.6rem;min-height:44px;border:1px solid var(--line);border-radiu
 .period-line{margin-top:.1rem;font-weight:700;color:#e8dcbc}
 .card.saved{margin-top:1rem}
 details.add-unit summary{list-style:none;display:inline-flex;cursor:pointer}details.add-unit summary::-webkit-details-marker{display:none}details.add-unit[open] summary{margin-bottom:.8rem}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.4rem;margin:1.2rem 0 .4rem;border-bottom:2px solid var(--line)}
+.step-tab{display:flex;align-items:center;gap:.5rem;min-height:48px;padding:.4rem .6rem;background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-2px;font:inherit;font-weight:700;color:var(--muted);cursor:pointer;text-align:right}
+.step-tab .num{display:inline-flex;align-items:center;justify-content:center;min-width:1.7rem;height:1.7rem;border-radius:50%;background:var(--soft);border:1px solid var(--line);color:var(--ink);font-size:.9rem}
+.step-tab.on{color:var(--pri-2);border-bottom-color:var(--brass)}.step-tab.on .num{background:var(--pri);border-color:var(--pri);color:#fff}
+.glossary{margin:.2rem 0 .8rem;border:1px solid var(--line);background:var(--soft);padding:.5rem .9rem}
+.glossary summary{cursor:pointer;font-weight:700;color:var(--pri);min-height:36px;display:flex;align-items:center}
+.glossary dl{margin:.3rem 0 .2rem;display:grid;gap:.25rem}.glossary dl div{display:flex;gap:.5rem}.glossary dt{font-weight:700;min-width:6.5rem}.glossary dd{margin:0;color:var(--muted)}
+@media (max-width:640px){.step-tab{flex-direction:column;gap:.15rem;font-size:.85rem;text-align:center}.glossary dl div{flex-direction:column;gap:0}}
 .task-box{margin-top:1.2rem;border:1px solid var(--line);border-top:3px solid var(--brass);background:var(--white)}
 .task{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;padding:.8rem 1.1rem}
 .task+.task{border-top:1px solid var(--hair)}
@@ -554,6 +562,25 @@ function renderUnit(d) {
   state.flash = '';
 }
 
+// Plain-language meaning of each box, shown above the numbers.
+var GLOSSARY = [
+  ['الوارد', 'كل المعاملات أو الطلبات التي وصلت خلال الفترة.'],
+  ['منجز', 'انتهى العمل عليها.'],
+  ['محوّل', 'أنهى القسم دوره فيها وحوّلها إلى جهة أخرى.'],
+  ['عالق', 'أنهى القسم دوره وينتظر المواطن (أوراق أو رسوم أو معلومات). يُحسب ضمن النتيجة.'],
+  ['قيد التنفيذ', 'ما زال العمل عليها جارياً لدى القسم.'],
+  ['ملغى', 'أُلغيت، ولا تدخل في حساب النتيجة.']
+];
+function glossary() {
+  return '<details class="glossary"><summary>ما معنى كل خانة؟</summary><dl>' + GLOSSARY.map(function (g) { return '<div><dt>' + g[0] + '</dt><dd>' + g[1] + '</dd></div>'; }).join('') +
+    '<div><dt>القاعدة</dt><dd>المنجز + المحوّل + العالق + قيد التنفيذ + الملغى = الوارد.</dd></div></dl></details>';
+}
+var STEPS = [['1', 'الأرقام'], ['2', 'أسباب غير المنتهي'], ['3', 'الأعمال الميدانية']];
+function stepBar() {
+  return '<nav class="steps" aria-label="خطوات الإدخال">' + STEPS.map(function (s, i) {
+    return '<button type="button" class="step-tab' + (i === 0 ? ' on' : '') + '" data-goto="' + s[0] + '"' + (i === 0 ? ' aria-current="step"' : '') + '><span class="num">' + s[0] + '</span>' + s[1] + '</button>';
+  }).join('') + '</nav>';
+}
 // Every name and number on a unit's page can be corrected here. The server checks everything before anything is saved.
 // Names and wording are editable by the admin only; section heads and division editors enter numbers.
 var EDIT_FIELDS = [['received', 'الوارد'], ['finished', 'منجز'], ['transferred', 'محوّل'], ['stuck', 'عالق'], ['inProgress', 'قيد التنفيذ'], ['cancelled', 'ملغى']];
@@ -584,19 +611,23 @@ function editForm(d) {
   var types = {};
   d.works.forEach(function (w) { if (w.type) types[w.type] = 1; });
   var typeList = '<datalist id="workTypes">' + Object.keys(types).map(function (t) { return '<option value="' + esc(t) + '">'; }).join('') + '</datalist>';
-  return '<div class="wrap narrow-block no-print"><form id="editForm" novalidate>' + unitBlock +
-    '<section class="block"><div class="sec-head"><h2>المؤشرات</h2><span class="note">يجب أن يساوي مجموع الحالات عدد الوارد. اترك صف المؤشر فارغاً إذا لم تتوفر أرقامه.</span></div><div class="t-wrap"><table class="t"><thead><tr><th>المؤشر</th>' + EDIT_FIELDS.map(function (f) { return '<th class="n">' + f[1] + '</th>'; }).join('') + '</tr></thead><tbody id="kpiBody">' + kpiRows + '</tbody></table></div>' + (N ? '<div class="form-actions"><button class="btn ghost" type="button" id="addKpiBtn">+ إضافة مؤشر</button><span class="note">مثلاً نوع طلب جديد. يمكن ترك أرقامه فارغة.</span></div>' : '') + '</section>' +
+  return '<div class="wrap narrow-block no-print"><form id="editForm" novalidate>' + stepBar() + '<div class="step" data-step="1">' + unitBlock +
+    '<section class="block"><div class="sec-head"><h2>المؤشرات</h2><span class="note">اكتب أرقام كل مؤشر لهذه الفترة. اترك الصف فارغاً إذا لم تتوفر أرقامه.</span></div>' + glossary() + '<div class="t-wrap"><table class="t"><thead><tr><th>المؤشر</th>' + EDIT_FIELDS.map(function (f) { return '<th class="n">' + f[1] + '</th>'; }).join('') + '</tr></thead><tbody id="kpiBody">' + kpiRows + '</tbody></table></div>' + (N ? '<div class="form-actions"><button class="btn ghost" type="button" id="addKpiBtn">+ إضافة مؤشر</button><span class="note">مثلاً نوع طلب جديد. يمكن ترك أرقامه فارغة.</span></div>' : '') + '</section>' +
+    '</div><div class="step" data-step="2" hidden>' +
     '<section class="block"><div class="sec-head"><h2>أسباب عدم الإنجاز</h2><span class="note" id="reasonCover" aria-live="polite"></span></div>' +
-      '<p class="note">وزّع المعاملات غير المنتهية (العالق وقيد التنفيذ) على الأسباب. ' + (N && reasonRows ? 'تغيير اسم سبب خاص يغيّره في كل الأقسام والشعب التي تستخدمه.' : '') + '</p>' +
+      '<p class="note">لكل معاملة غير منتهية (العالق وقيد التنفيذ) اختر سببها الرئيسي واكتب العدد بجانبه. السطر أعلاه يبيّن كم بقي دون سبب. ' + (N && reasonRows ? 'تغيير اسم سبب خاص يغيّره في كل الأقسام والشعب التي تستخدمه.' : '') + '</p>' +
       '<div class="t-wrap"><table class="t"><thead><tr><th>السبب</th><th class="n">العدد</th><th>ملاحظة</th></tr></thead><tbody>' + reasonRows +
       (d.generalReasons || []).map(function (g) {
         return '<tr><td>' + esc(g.name) + '</td><td class="n" data-label="العدد">' + numInput('data-ureason="' + g.id + '" data-f="count"', g.name, g.count) + '</td>' +
-          '<td data-label="ملاحظة">' + (g.needsNote ? txtInput('data-ureason="' + g.id + '" data-f="note" placeholder="' + esc(g.needsNote) + '"', 'ملاحظة: ' + g.needsNote, g.note, 'wide') : '') + '</td></tr>' + errRow('ur-' + g.id, 3);
+          '<td' + (g.needsNote ? ' data-label="ملاحظة"' : '') + '>' + (g.needsNote ? txtInput('data-ureason="' + g.id + '" data-f="note" placeholder="' + esc(g.needsNote) + '"', 'ملاحظة: ' + g.needsNote, g.note, 'wide') : '') + '</td></tr>' + errRow('ur-' + g.id, 3);
       }).join('') + errRow('reasons', 3) + '</tbody></table></div></section>' +
+    '</div><div class="step" data-step="3" hidden>' +
     '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2><button class="btn ghost" type="button" id="addWorkBtn">+ إضافة عمل</button></div>' + typeList +
+      '<p class="note">سجّل الأعمال الجديدة وحدّث حالة الأعمال الجارية. الأعمال المنتهية تبقى كما هي.</p>' +
       '<div class="t-wrap"><table class="t"><thead><tr><th>العمل</th><th>النوع</th><th>الموقع</th><th>الحالة</th><th>البدء</th><th>الانتهاء</th><th class="n">القيمة المالية</th><th>العملة</th>' + (N ? '<th>إزالة</th>' : '') + '</tr></thead><tbody id="workBody">' + workRows + '</tbody></table></div>' +
-      (workRows ? '' : '<p class="note" id="noWorks">لا توجد أعمال مسجلة. اضغط "إضافة عمل" لإضافة أول عمل.</p>') + '</section>' +
-    '<div class="form-actions save-bar"><button class="btn" type="submit" id="saveBtn">حفظ التعديلات</button><button class="btn ghost" type="button" id="cancelBtn">إلغاء</button>' +
+      (workRows ? '' : '<p class="note" id="noWorks">لا توجد أعمال مسجلة. اضغط "إضافة عمل" لإضافة أول عمل.</p>') + '</section></div>' +
+    '<div class="form-actions save-bar"><button class="btn ghost" type="button" id="prevStep" hidden>السابق</button><button class="btn ghost" type="button" id="nextStep">التالي</button>' +
+    '<button class="btn" type="submit" id="saveBtn">حفظ التعديلات</button><button class="btn ghost" type="button" id="cancelBtn">إلغاء</button>' +
     (d.localCopy ? '<button class="btn ghost sep" type="button" id="copyBtn">تنزيل نسخة من الأرقام</button><button class="btn ghost" type="button" id="loadBtn">استرجاع نسخة</button><input type="file" id="loadFile" accept=".json" hidden aria-label="ملف النسخة"><button class="btn ghost" type="button" id="resetBtn">العودة إلى الأرقام الأصلية</button>' : '') +
     '</div><div class="ferr" id="formMsg" role="alert"></div></form></div>';
 }
@@ -642,6 +673,18 @@ function reasonCoverage(form) {
 }
 function wireEdit(d) {
   var form = document.getElementById('editForm'), msg = document.getElementById('formMsg');
+  var stepNow = 1;
+  function goStep(n) {
+    stepNow = Math.max(1, Math.min(3, n));
+    form.querySelectorAll('.step').forEach(function (s) { s.hidden = Number(s.dataset.step) !== stepNow; });
+    form.querySelectorAll('.step-tab').forEach(function (t) { var on = Number(t.dataset.goto) === stepNow; t.classList.toggle('on', on); if (on) t.setAttribute('aria-current', 'step'); else t.removeAttribute('aria-current'); });
+    document.getElementById('prevStep').hidden = stepNow === 1;
+    document.getElementById('nextStep').hidden = stepNow === 3;
+    form.scrollIntoView({ block: 'start' });
+  }
+  form.querySelectorAll('.step-tab').forEach(function (t) { t.onclick = function () { goStep(Number(t.dataset.goto)); }; });
+  document.getElementById('nextStep').onclick = function () { goStep(stepNow + 1); };
+  document.getElementById('prevStep').onclick = function () { goStep(stepNow - 1); };
   var dirty = false;
   form.addEventListener('input', function () { dirty = true; reasonCoverage(form); rowSums(form); });
   reasonCoverage(form); rowSums(form);
@@ -702,6 +745,7 @@ function wireEdit(d) {
       });
       msg.textContent = 'لم تُحفظ التعديلات. يرجى تصحيح الأخطاء المبينة باللون الأحمر.';
       var first = form.querySelector('.err-row:not([hidden])');
+      if (first) { var st = first.closest('.step'); if (st && st.hidden) goStep(Number(st.dataset.step)); }
       if (first) { first.scrollIntoView({ block: 'center' }); var prev = first.previousElementSibling, inp = prev && prev.querySelector('input,select'); if (inp) inp.focus({ preventScroll: true }); }
     }, function (m) { btn.disabled = false; fail(m); });
   };
