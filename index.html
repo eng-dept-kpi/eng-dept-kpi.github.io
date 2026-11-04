@@ -141,6 +141,8 @@ input.num{width:5.6rem;min-height:44px;border:1px solid var(--line);border-radiu
 .ferr{color:var(--bad);font-size:.88rem;font-weight:700}
 .form-actions{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;padding-block:.9rem}
 .form-actions .sep{margin-inline-start:auto}
+.cover.under{color:var(--risk)}.cover.over{color:var(--bad);font-weight:700}.cover.full{color:var(--on)}
+.reason-notes{margin-top:.5rem;font-size:.9rem;color:var(--muted)}.reason-notes p{margin:.25rem 0}.reason-notes b{color:var(--ink)}
 .task-box{margin-top:1.2rem;border:1px solid var(--line);border-top:3px solid var(--brass);background:var(--white)}
 .task{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;padding:.8rem 1.1rem}
 .task+.task{border-top:1px solid var(--hair)}
@@ -398,10 +400,11 @@ function mixBlock(t) {
   return '<section class="block"><div class="sec-head"><h2>حالة المعاملات</h2>' + (t.cancelled ? '<span class="note">ملغى ' + fmt(t.cancelled) + '</span>' : '') + '</div><div class="seg">' + segs + '</div>' + rows + '</section>';
 }
 
-function reasonsBlock(list, limit) {
+function reasonsBlock(list, limit, notes) {
   var total = list.reduce(function (s, r) { return s + r.count; }, 0);
   var rows = list.slice(0, limit).map(function (r) { return '<div class="row3"><span>' + esc(r.name) + '</span><b class="tn">' + fmt(r.count) + '</b><span class="tn">' + (total ? (r.count / total * 100).toFixed(0) : 0) + '%</span></div>'; }).join('');
-  return '<section class="block"><div class="sec-head"><h2>أسباب عدم الإنجاز</h2><span class="note">الإجمالي ' + fmt(total) + '</span></div>' + (rows || '<div class="note">لا توجد أسباب مسجلة لهذه الفترة</div>') + '</section>';
+  return '<section class="block"><div class="sec-head"><h2>أسباب عدم الإنجاز</h2><span class="note">الإجمالي ' + fmt(total) + '</span></div>' + (rows || '<div class="note">لا توجد أسباب مسجلة لهذه الفترة</div>') +
+    (notes && notes.length ? '<div class="reason-notes">' + notes.map(function (n) { return '<p><b>' + esc(n.name) + ':</b> ' + esc(n.note) + '</p>'; }).join('') + '</div>' : '') + '</section>';
 }
 
 function worksBlock(t) {
@@ -512,7 +515,7 @@ function renderUnit(d) {
       '<section class="block"><div class="sec-head"><h2>المؤشرات</h2></div>' + kpiTable(d.kpis) + keyHtml({ on: Number(d.settings.onTrackMin), at: Number(d.settings.atRiskMin) }) + '</section>' +
       '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2><span class="note">منتهية ' + wt.finished + ' · القيمة المالية ' + moneyLines(wt.spent) + ' · كما أفاد القسم أو الشعبة</span></div>' + worksTable(d.works) + '</section>' +
       '<section class="block"><div class="sec-head"><h2>المهام</h2></div>' + tasksTable(d.tasks) + '</section>' +
-    '</div><div>' + reasonsBlock(d.reasons, 8) +
+    '</div><div>' + reasonsBlock(d.reasons, 10, d.reasonNotes) +
       '<section class="block"><div class="sec-head"><h2>السجل حسب الفترة</h2></div>' + historyTable(d.history) + '</section>' +
     '</div></div>');
   document.getElementById('app').innerHTML = shell(d, 'units', body);
@@ -536,7 +539,7 @@ function editForm(d) {
     return '<tr><td>' + (N ? txtInput('data-kpi="' + esc(r.id) + '" data-f="name"', 'اسم المؤشر', r.name, 'wide') : esc(r.name)) + '</td>' + cells + '</tr>' + errRow(r.id, 7);
   }).join('');
   var reasonRows = d.reasonRows.map(function (r) {
-    return '<tr><td>' + (N ? txtInput('data-reason="' + esc(r.id) + '" data-f="name"', 'اسم السبب', r.name, 'wide') : esc(r.name)) + '</td><td class="n" data-label="العدد">' + numInput('data-reason="' + esc(r.id) + '" data-f="count"', r.name, r.count) + '</td></tr>' + errRow(r.id, 2);
+    return '<tr><td>' + (N ? txtInput('data-reason="' + esc(r.id) + '" data-f="name"', 'اسم السبب', r.name, 'wide') : esc(r.name)) + '</td><td class="n" data-label="العدد">' + numInput('data-reason="' + esc(r.id) + '" data-f="count"', r.name, r.count) + '</td><td></td></tr>' + errRow(r.id, 3);
   }).join('');
   var statusOpts = function (cur) { return '<option value=""' + (cur ? '' : ' selected') + '>غير محددة</option>' + Object.keys(WORK_STATUS).map(function (k) { return '<option value="' + k + '"' + (cur === k ? ' selected' : '') + '>' + esc(WORK_STATUS[k]) + '</option>'; }).join(''); };
   var workRows = d.works.map(function (w) {
@@ -553,7 +556,13 @@ function editForm(d) {
   var typeList = '<datalist id="workTypes">' + Object.keys(types).map(function (t) { return '<option value="' + esc(t) + '">'; }).join('') + '</datalist>';
   return '<div class="wrap narrow-block no-print"><form id="editForm" novalidate>' + unitBlock +
     '<section class="block"><div class="sec-head"><h2>المؤشرات</h2><span class="note">يجب أن يساوي مجموع الحالات عدد الوارد. اترك صف المؤشر فارغاً إذا لم تتوفر أرقامه.</span></div><div class="t-wrap"><table class="t"><thead><tr><th>المؤشر</th>' + EDIT_FIELDS.map(function (f) { return '<th class="n">' + f[1] + '</th>'; }).join('') + '</tr></thead><tbody id="kpiBody">' + kpiRows + '</tbody></table></div>' + (N ? '<div class="form-actions"><button class="btn ghost" type="button" id="addKpiBtn">+ إضافة مؤشر</button><span class="note">مثلاً نوع طلب جديد. يمكن ترك أرقامه فارغة.</span></div>' : '') + '</section>' +
-    (reasonRows ? '<section class="block"><div class="sec-head"><h2>أسباب عدم الإنجاز</h2>' + (N ? '<span class="note">تغيير اسم السبب يغيّره في كل الأقسام والشعب التي تستخدمه.</span>' : '') + '</div><div class="t-wrap"><table class="t"><thead><tr><th>السبب</th><th class="n">العدد</th></tr></thead><tbody>' + reasonRows + '</tbody></table></div></section>' : '') +
+    '<section class="block"><div class="sec-head"><h2>أسباب عدم الإنجاز</h2><span class="note" id="reasonCover" aria-live="polite"></span></div>' +
+      '<p class="note">وزّع المعاملات غير المنتهية (العالق وقيد التنفيذ) على الأسباب. ' + (N && reasonRows ? 'تغيير اسم سبب خاص يغيّره في كل الأقسام والشعب التي تستخدمه.' : '') + '</p>' +
+      '<div class="t-wrap"><table class="t"><thead><tr><th>السبب</th><th class="n">العدد</th><th>ملاحظة</th></tr></thead><tbody>' + reasonRows +
+      (d.generalReasons || []).map(function (g) {
+        return '<tr><td>' + esc(g.name) + '</td><td class="n" data-label="العدد">' + numInput('data-ureason="' + g.id + '" data-f="count"', g.name, g.count) + '</td>' +
+          '<td data-label="ملاحظة">' + (g.needsNote ? txtInput('data-ureason="' + g.id + '" data-f="note" placeholder="' + esc(g.needsNote) + '"', 'ملاحظة: ' + g.needsNote, g.note, 'wide') : '') + '</td></tr>' + errRow('ur-' + g.id, 3);
+      }).join('') + errRow('reasons', 3) + '</tbody></table></div></section>' +
     '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2><button class="btn ghost" type="button" id="addWorkBtn">+ إضافة عمل</button></div>' + typeList +
       '<div class="t-wrap"><table class="t"><thead><tr><th>العمل</th><th>النوع</th><th>الموقع</th><th>الحالة</th><th>البدء</th><th>الانتهاء</th><th class="n">القيمة المالية</th><th>العملة</th>' + (N ? '<th></th>' : '') + '</tr></thead><tbody id="workBody">' + workRows + '</tbody></table></div>' +
       (workRows ? '' : '<p class="note" id="noWorks">لا توجد أعمال مسجلة. اضغط "إضافة عمل" لإضافة أول عمل.</p>') + '</section>' +
@@ -579,8 +588,20 @@ function newWorkRow(N) {
     '<td class="n" data-label="القيمة المالية">' + numInput(a('value'), 'القيمة المالية', '') + '</td>' +
     '<td data-label="العملة">' + txtInput(a('currency'), 'العملة', 'شيكل', 'short') + '</td>' + (N ? '<td><button class="linkish" type="button" data-drop="' + id + '">حذف السطر</button></td>' : '<td><button class="linkish" type="button" data-drop="' + id + '">حذف السطر</button></td>') + '</tr>' + errRow(id, 10);
 }
+// Shows, while typing, how many unfinished items the reasons explain.
+function reasonCoverage(form) {
+  var unfinished = 0, explained = 0;
+  form.querySelectorAll('[data-f="stuck"],[data-f="inProgress"]').forEach(function (i) { if (i.dataset.kpi || i.dataset.newkpi) unfinished += Number(i.value) || 0; });
+  form.querySelectorAll('[data-reason][data-f="count"],[data-ureason][data-f="count"]').forEach(function (i) { explained += Number(i.value) || 0; });
+  var el = document.getElementById('reasonCover');
+  if (!el) return;
+  el.textContent = unfinished ? 'غطت الأسباب ' + explained + ' من ' + unfinished + ' معاملة غير منتهية' : 'لا توجد معاملات غير منتهية';
+  el.className = 'note cover ' + (explained > unfinished ? 'over' : explained < unfinished ? 'under' : 'full');
+}
 function wireEdit(d) {
   var form = document.getElementById('editForm'), msg = document.getElementById('formMsg');
+  form.addEventListener('input', function () { reasonCoverage(form); });
+  reasonCoverage(form);
   var body = document.getElementById('workBody');
   var kb = document.getElementById('addKpiBtn');
   if (kb) kb.onclick = function () {
@@ -602,10 +623,11 @@ function wireEdit(d) {
   document.getElementById('cancelBtn').onclick = done;
   form.onsubmit = function (ev) {
     ev.preventDefault();
-    var byKpi = {}, works = {}, reasons = {}, unit = null, added = {}, removed = [], newKpiRows = {};
-    form.querySelectorAll('[data-kpi],[data-work],[data-reason],[data-unit],[data-new],[data-remove],[data-newkpi]').forEach(function (i) {
+    var byKpi = {}, works = {}, reasons = {}, unit = null, added = {}, removed = [], newKpiRows = {}, uReasons = {};
+    form.querySelectorAll('[data-kpi],[data-work],[data-reason],[data-unit],[data-new],[data-remove],[data-newkpi],[data-ureason]').forEach(function (i) {
       var s = i.dataset;
-      if (s.newkpi) (newKpiRows[s.newkpi] = newKpiRows[s.newkpi] || { tmpId: s.newkpi })[s.f] = i.value;
+      if (s.ureason) (uReasons[s.ureason] = uReasons[s.ureason] || { categoryId: s.ureason })[s.f] = i.value;
+      else if (s.newkpi) (newKpiRows[s.newkpi] = newKpiRows[s.newkpi] || { tmpId: s.newkpi })[s.f] = i.value;
       else if (s.remove) { if (i.checked) removed.push({ id: s.remove, version: (d.works.filter(function (w) { return w.id === s.remove; })[0] || {}).version }); }
       else if (s.new) (added[s.new] = added[s.new] || { tmpId: s.new })[s.f] = i.value;
       else if (s.kpi) (byKpi[s.kpi] = byKpi[s.kpi] || { kpiId: s.kpi })[s.f] = i.value;
@@ -627,6 +649,7 @@ function wireEdit(d) {
     var newWorks = vals(added).filter(function (w) { return ['title', 'type', 'location', 'startDate', 'endDate', 'spent'].some(function (f) { return String(w[f] || '').trim(); }); });
     if (removed.length && !window.confirm('سيُزال ' + removed.length + ' من الأعمال من الصفحة (يبقى محفوظاً في الأرشيف). هل تريد المتابعة؟')) { btn.disabled = false; return; }
     api('saveUnit', { id: d.unit.id, period: d.period.id, unit: unit, entries: vals(byKpi), works: vals(works), reasons: vals(reasons), newWorks: newWorks, removeWorks: removed,
+      unitReasons: (d.generalReasons || []).map(function (g) { var r = uReasons[g.id] || { categoryId: g.id }; r.version = g.version; return r; }),
       newKpis: vals(newKpiRows).filter(function (k) { return Object.keys(k).some(function (f) { return f !== 'tmpId' && String(k[f] || '').trim(); }); }) }, function (res) {
       btn.disabled = false;
       if (!res.errors.length) return done();
