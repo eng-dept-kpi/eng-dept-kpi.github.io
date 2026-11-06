@@ -157,6 +157,19 @@ details.add-unit summary{list-style:none;display:inline-flex;cursor:pointer}deta
 .glossary summary{cursor:pointer;font-weight:700;color:var(--pri);min-height:36px;display:flex;align-items:center}
 .glossary dl{margin:.3rem 0 .2rem;display:grid;gap:.25rem}.glossary dl div{display:flex;gap:.5rem}.glossary dt{font-weight:700;min-width:6.5rem}.glossary dd{margin:0;color:var(--muted)}
 @media (max-width:640px){.step-tab{flex-direction:column;gap:.15rem;font-size:.85rem;text-align:center}.glossary dl div{flex-direction:column;gap:0}}
+.rg{padding:.55rem 0;border-bottom:1px solid var(--hair)}
+.rg-head{display:grid;grid-template-columns:minmax(0,1fr) auto 3.2rem;gap:.6rem;align-items:baseline}
+.rg-name{font-weight:700}.rg-pct{color:var(--muted);text-align:left}
+.rg-bar{height:6px;background:var(--hair);margin-top:.35rem}.rg-bar i{display:block;height:100%;background:var(--pri)}
+.rg-management .rg-bar i{background:var(--risk-fill)}.rg-none .rg-bar i{background:var(--none)}.rg-normal .rg-bar i{background:var(--on)}
+.rg-none .rg-name{color:var(--muted);font-weight:400}
+.rg-items{font-size:.86rem;color:var(--muted);margin-top:.3rem}
+.mg-box{margin-top:1rem;border:1px solid var(--line);border-top:3px solid var(--brass);background:var(--soft);padding:.7rem 1rem}
+.mg-box h3{margin:0 0 .4rem;font-size:1.02rem;color:var(--pri-2)}.mg-box ul{margin:0;padding-inline-start:1.1rem}.mg-box li{margin:.3rem 0}
+.mg-note{display:block;font-size:.86rem;color:var(--muted)}
+.work-sum.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.money-h{font-size:.95rem;margin:.9rem 0 .2rem;color:var(--pri-2)}
+.row3.money{grid-template-columns:minmax(0,1fr) auto}
 .task-box{margin-top:1.2rem;border:1px solid var(--line);border-top:3px solid var(--brass);background:var(--white)}
 .task{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;padding:.8rem 1.1rem}
 .task+.task{border-top:1px solid var(--hair)}
@@ -329,9 +342,10 @@ function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
 function pill(st) { return '<span class="pill s-' + st + '">' + icon(st) + esc(STATUS_LABEL[st]) + '</span>'; }
 // A work's single money figure ("financial value"): the amount entered, or an older estimate when that is all there is.
 function workValue(w) { var h = function (v) { return v !== '' && v !== null && v !== undefined; }; return h(w.spent) ? Number(w.spent) : h(w.estimatedCost) ? Number(w.estimatedCost) : null; }
+// Money per currency, rounded to whole units (never added across currencies).
 function moneyLines(spent) {
   var keys = Object.keys(spent || {});
-  return keys.length ? keys.map(function (c) { return '<span class="ltr">' + fmt(spent[c]) + '</span> ' + esc(c); }).join(' · ') : '-';
+  return keys.length ? keys.map(function (c) { return '<span class="ltr">' + fmt(Math.round(spent[c])) + '</span> ' + esc(c); }).join(' · ') : '-';
 }
 
 var TOKEN_KEY = 'kpi-token';
@@ -425,6 +439,27 @@ function mixBlock(t) {
   return '<section class="block"><div class="sec-head"><h2>حالة المعاملات</h2>' + (t.cancelled ? '<span class="note">ملغى ' + fmt(t.cancelled) + '</span>' : '') + '</div><div class="seg">' + segs + '</div>' + rows + '</section>';
 }
 
+// Reasons grouped by who can act on them. Percentages are of all unfinished items.
+// opts.management: show the "what management can support" box (home page); opts.notes: section notes.
+function reasonsPanel(b, opts) {
+  opts = opts || {};
+  if (!b || !b.unfinished) return '<section class="block"><div class="sec-head"><h2>أسباب المعاملات غير المنجزة</h2></div><div class="note">لا توجد معاملات غير منجزة في هذه الفترة</div></section>';
+  var pctOf = function (n) { return (n / Math.max(b.unfinished, b.explained) * 100).toFixed(0); };
+  var rows = b.groups.map(function (g) {
+    var same = g.items.length === 1 && (g.key === 'normal' || g.key === 'internal' || g.items[0].name === g.label);
+    var top = same ? '' : g.items.slice(0, opts.top || 3).map(function (it) { return esc(it.name) + ' <span class="tn">' + fmt(it.count) + '</span>'; }).join(' · ');
+    return '<div class="rg rg-' + g.key + '"><div class="rg-head"><span class="rg-name">' + esc(g.label) + '</span><b class="tn">' + fmt(g.count) + '</b><span class="tn rg-pct">' + pctOf(g.count) + '%</span></div>' +
+      '<div class="rg-bar" aria-hidden="true"><i style="width:' + pctOf(g.count) + '%"></i></div>' + (top ? '<div class="rg-items">' + top + '</div>' : '') + '</div>';
+  }).join('') + (b.notGiven ? '<div class="rg rg-none"><div class="rg-head"><span class="rg-name">لم يُحدد السبب بعد</span><b class="tn">' + fmt(b.notGiven) + '</b><span class="tn rg-pct">' + pctOf(b.notGiven) + '%</span></div><div class="rg-bar" aria-hidden="true"><i style="width:' + pctOf(b.notGiven) + '%"></i></div></div>' : '');
+  var mg = '';
+  if (opts.management && b.management.length) {
+    mg = '<div class="mg-box"><h3>ما يمكن للإدارة دعمه</h3><ul>' + b.management.slice(0, 6).map(function (x) {
+      return '<li><b>' + esc(x.unit) + '</b>: ' + esc(x.name) + ' (<span class="tn">' + fmt(x.count) + '</span> معاملة)' + (x.note ? '<span class="mg-note">' + esc(x.note) + '</span>' : '') + '</li>';
+    }).join('') + '</ul></div>';
+  }
+  var notes = opts.notes && opts.notes.length ? '<div class="reason-notes">' + opts.notes.map(function (n) { return '<p><b>' + esc(n.name) + ':</b> ' + esc(n.note) + '</p>'; }).join('') + '</div>' : '';
+  return '<section class="block"><div class="sec-head"><h2>أسباب المعاملات غير المنجزة</h2><span class="note">' + fmt(b.unfinished) + ' معاملة غير منجزة · حُدد سبب ' + fmt(Math.min(b.explained, b.unfinished)) + ' منها</span></div>' + rows + mg + notes + '</section>';
+}
 // Percentages are of all unfinished items, so explained reasons are never inflated; the rest shows as "not classified yet".
 function reasonsBlock(list, limit, notes, unfinished) {
   var total = list.reduce(function (s, r) { return s + r.count; }, 0);
@@ -439,9 +474,12 @@ function reasonsBlock(list, limit, notes, unfinished) {
 }
 
 function worksBlock(t) {
-  return '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2></div><div class="work-sum">' +
-    '<div><div class="v tn">' + fmt(t.finished) + '</div><div class="k">منتهية</div></div><div><div class="v tn">' + fmt(t.ongoing + t.stopped) + '</div><div class="k">جارية أو متوقفة</div></div>' +
-    '<div><div class="v tn" style="font-size:1.02rem">' + moneyLines(t.spent) + '</div><div class="k">القيمة المالية كما أفادت الأقسام والشعب</div></div></div></section>';
+  var open = t.ongoing + t.stopped + t.notStarted;
+  var money = function (label, m) { return Object.keys(m || {}).length ? '<div class="row3 money"><span>' + label + '</span><b class="tn">' + moneyLines(m) + '</b></div>' : ''; };
+  return '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2><span class="note">كما أفادت الأقسام والشعب</span></div><div class="work-sum two">' +
+    '<div><div class="v tn">' + fmt(t.finished) + '</div><div class="k">أعمال منتهية</div></div><div><div class="v tn">' + fmt(open) + '</div><div class="k">أعمال غير منتهية</div></div></div>' +
+    '<h3 class="money-h">القيمة المالية</h3>' + money('للأعمال المنتهية', t.valueDone) + money('للأعمال غير المنتهية', t.valueOpen) +
+    (Object.keys(t.spent || {}).length > 1 ? '<p class="note">كل عملة محسوبة وحدها، دون تحويل بين العملات.</p>' : '') + '</section>';
 }
 
 // A shortcut for section heads and division editors: straight to their edit screen for the open month.
@@ -476,7 +514,7 @@ function renderOverview(d) {
       fig('أقسام وشعب رفعت البيانات', d.coverage.reported + ' <small>من ' + d.coverage.total + '</small>', d.coverage.partial ? d.coverage.partial + ' بشكل جزئي' : '') +
       fig('المعاملات الواردة', fmt(d.totals.received), compare) +
     '</div></div></div>' +
-    tasksBox(d) + '<div class="wrap cols"><div>' + unitsBlock(d) + '</div><div>' + mixBlock(d.totals) + reasonsBlock(d.reasons, 4, null, d.totals.stuck + d.totals.inProgress) + worksBlock(d.fieldTotals) + '</div></div>';
+    tasksBox(d) + '<div class="wrap cols"><div>' + unitsBlock(d) + '</div><div>' + mixBlock(d.totals) + reasonsPanel(d.breakdown, { management: true, top: 2 }) + worksBlock(d.fieldTotals) + '</div></div>';
   document.getElementById('app').innerHTML = shell(d, 'overview', body);
   wire();
   wireTasks(d);
@@ -512,7 +550,7 @@ function kpiTable(kpis) {
 function worksTable(works) {
   if (!works.length) return '<div class="note" style="padding-top:.5rem">لا توجد أعمال مسجلة لهذه الفترة</div>';
   var rows = works.map(function (w) {
-    return '<tr><td>' + esc(w.title) + (w.fromPeriod ? '<span class="reason">من ' + esc(w.fromPeriod) + '</span>' : '') + (w.reason ? '<span class="reason">السبب: ' + esc(w.reason) + '</span>' : '') + '</td><td data-label="النوع">' + esc(w.type) + '</td><td data-label="الموقع">' + esc(w.location || '-') + '</td><td data-label="الحالة">' + esc(WORK_STATUS[w.status] || '-') + '</td><td class="n" data-label="البدء">' + esc(w.startDate || '-') + '</td><td class="n" data-label="الانتهاء">' + esc(w.endDate || '-') + '</td><td class="n" data-label="القيمة المالية">' + (workValue(w) === null ? '-' : fmt(workValue(w))) + '</td><td data-label="العملة">' + (workValue(w) === null ? '-' : esc(w.currency)) + '</td></tr>';
+    return '<tr><td>' + esc(w.title) + (w.fromPeriod ? '<span class="reason">من ' + esc(w.fromPeriod) + '</span>' : '') + (w.reason ? '<span class="reason">السبب: ' + esc(w.reason) + '</span>' : '') + '</td><td data-label="النوع">' + esc(w.type) + '</td><td data-label="الموقع">' + esc(w.location || '-') + '</td><td data-label="الحالة">' + esc(WORK_STATUS[w.status] || '-') + '</td><td class="n" data-label="البدء">' + esc(w.startDate || '-') + '</td><td class="n" data-label="الانتهاء">' + esc(w.endDate || '-') + '</td><td class="n" data-label="القيمة المالية">' + (workValue(w) === null ? '-' : fmt(Math.round(workValue(w)))) + '</td><td data-label="العملة">' + (workValue(w) === null ? '-' : esc(w.currency)) + '</td></tr>';
   }).join('');
   return '<div class="t-wrap"><table class="t cards"><thead><tr><th>العمل</th><th>النوع</th><th>الموقع</th><th>الحالة</th><th class="n">البدء</th><th class="n">الانتهاء</th><th class="n">القيمة المالية</th><th>العملة</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
@@ -546,9 +584,9 @@ function renderUnit(d) {
     (state.editing ? editForm(d) :
     '<div class="wrap cols"><div>' +
       '<section class="block"><div class="sec-head"><h2>المؤشرات</h2></div>' + kpiTable(d.kpis) + keyHtml({ on: Number(d.settings.onTrackMin), at: Number(d.settings.atRiskMin) }) + '</section>' +
-      '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2><span class="note">منتهية ' + wt.finished + ' · القيمة المالية ' + moneyLines(wt.spent) + ' · كما أفاد القسم أو الشعبة</span></div>' + worksTable(d.works) + '</section>' +
+      '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2><span class="note">عدد الأعمال ' + d.works.length + '، المنتهية منها ' + wt.finished + (Object.keys(wt.spent).length ? ' · القيمة المالية الإجمالية ' + moneyLines(wt.spent) : '') + '</span></div>' + worksTable(d.works) + '</section>' +
       '<section class="block"><div class="sec-head"><h2>المهام</h2></div>' + tasksTable(d.tasks) + '</section>' +
-    '</div><div>' + reasonsBlock(d.reasons, 10, d.reasonNotes, d.unfinished) +
+    '</div><div>' + reasonsPanel(d.breakdown, { top: 6, notes: d.reasonNotes }) +
       '<section class="block"><div class="sec-head"><h2>السجل حسب الفترة</h2></div>' + historyTable(d.history) + '</section>' +
     '</div></div>');
   document.getElementById('app').innerHTML = shell(d, 'units', body);
