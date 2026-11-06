@@ -450,7 +450,7 @@ function reasonsPanel(b, opts) {
     var top = same ? '' : g.items.slice(0, opts.top || 3).map(function (it) { return esc(it.name) + ' <span class="tn">' + fmt(it.count) + '</span>'; }).join(' · ');
     return '<div class="rg rg-' + g.key + '"><div class="rg-head"><span class="rg-name">' + esc(g.label) + '</span><b class="tn">' + fmt(g.count) + '</b><span class="tn rg-pct">' + pctOf(g.count) + '%</span></div>' +
       '<div class="rg-bar" aria-hidden="true"><i style="width:' + pctOf(g.count) + '%"></i></div>' + (top ? '<div class="rg-items">' + top + '</div>' : '') + '</div>';
-  }).join('') + (b.notGiven ? '<div class="rg rg-none"><div class="rg-head"><span class="rg-name">لم يُحدد السبب بعد</span><b class="tn">' + fmt(b.notGiven) + '</b><span class="tn rg-pct">' + pctOf(b.notGiven) + '%</span></div><div class="rg-bar" aria-hidden="true"><i style="width:' + pctOf(b.notGiven) + '%"></i></div></div>' : '');
+  }).join('') + (b.notGiven ? '<div class="rg rg-none"><div class="rg-head"><span class="rg-name">قيد المتابعة لدى الأقسام والشعب</span><b class="tn">' + fmt(b.notGiven) + '</b><span class="tn rg-pct">' + pctOf(b.notGiven) + '%</span></div><div class="rg-bar" aria-hidden="true"><i style="width:' + pctOf(b.notGiven) + '%"></i></div></div>' : '');
   var mg = '';
   if (opts.management && b.management.length) {
     mg = '<div class="mg-box"><h3>ما يمكن للإدارة دعمه</h3><ul>' + b.management.slice(0, 6).map(function (x) {
@@ -458,7 +458,7 @@ function reasonsPanel(b, opts) {
     }).join('') + '</ul></div>';
   }
   var notes = opts.notes && opts.notes.length ? '<div class="reason-notes">' + opts.notes.map(function (n) { return '<p><b>' + esc(n.name) + ':</b> ' + esc(n.note) + '</p>'; }).join('') + '</div>' : '';
-  return '<section class="block"><div class="sec-head"><h2>أسباب المعاملات غير المنجزة</h2><span class="note">' + fmt(b.unfinished) + ' معاملة غير منجزة · حُدد سبب ' + fmt(Math.min(b.explained, b.unfinished)) + ' منها</span></div>' + rows + mg + notes + '</section>';
+  return '<section class="block"><div class="sec-head"><h2>أسباب المعاملات غير المنجزة</h2><span class="note">' + fmt(b.unfinished) + ' معاملة غير منجزة</span></div>' + rows + mg + notes + '</section>';
 }
 // Percentages are of all unfinished items, so explained reasons are never inflated; the rest shows as "not classified yet".
 function reasonsBlock(list, limit, notes, unfinished) {
@@ -467,7 +467,7 @@ function reasonsBlock(list, limit, notes, unfinished) {
   var shown = list.slice(0, limit), rest = list.slice(limit).reduce(function (s, r) { return s + r.count; }, 0);
   var line = function (name, count, cls) { return '<div class="row3' + (cls ? ' ' + cls : '') + '"><span>' + name + '</span><b class="tn">' + fmt(count) + '</b><span class="tn">' + (base ? (count / base * 100).toFixed(0) : 0) + '%</span></div>'; };
   var rows = shown.map(function (r) { return line(esc(r.name), r.count); }).join('') + (rest ? line('أسباب أخرى', rest) : '') +
-    (unfinished > total ? line('لم يُحدد السبب بعد', unfinished - total, 'unclassified') : '');
+    (unfinished > total ? line('قيد المتابعة لدى الأقسام والشعب', unfinished - total, 'unclassified') : '');
   var head = unfinished ? 'حُدد السبب لـ ' + fmt(total) + ' من ' + fmt(unfinished) + ' معاملة غير منتهية' : 'الإجمالي ' + fmt(total);
   return '<section class="block"><div class="sec-head"><h2>أسباب عدم الإنجاز</h2><span class="note">' + head + '</span></div>' + (rows || '<div class="note">لا توجد أسباب مسجلة لهذه الفترة</div>') +
     (notes && notes.length ? '<div class="reason-notes">' + notes.map(function (n) { return '<p><b>' + esc(n.name) + ':</b> ' + esc(n.note) + '</p>'; }).join('') + '</div>' : '') + '</section>';
