@@ -177,7 +177,7 @@ a.row3.money{grid-template-columns:minmax(0,1fr) auto auto;text-decoration:none;
 a.row3.money:hover{background:var(--soft)}
 a.wlink{text-decoration:none;color:inherit;display:block}a.wlink:hover .v{text-decoration:underline}
 .dist{padding:.5rem 0;border-bottom:1px solid var(--hair)}
-.dist-head{display:grid;grid-template-columns:minmax(0,1fr) auto auto 3rem;gap:.6rem;align-items:baseline}
+.dist-head{display:grid;grid-template-columns:minmax(0,1fr) auto 3rem;gap:.6rem;align-items:baseline}
 .dist-name{font-weight:700}.dist-pct{color:var(--muted);text-align:left}
 .task-box{margin-top:1.2rem;border:1px solid var(--line);border-top:3px solid var(--brass);background:var(--white)}
 .task{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;padding:.8rem 1.1rem}
@@ -1023,10 +1023,12 @@ function renderWorks(d) {
   });
   var main = Object.keys(cur).sort(function (a, b) { return cur[b] - cur[a]; })[0];
   var dist = function (heading, map) {
-    var keys = Object.keys(map).sort(function (a, b) { return (map[b].v[main] || 0) - (map[a].v[main] || 0) || map[b].n - map[a].n; });
+    // Only sections with a recorded value; value and share only (no counts).
+    var keys = Object.keys(map).filter(function (k) { return Object.keys(map[k].v).length; }).sort(function (a, b) { return (map[b].v[main] || 0) - (map[a].v[main] || 0); });
+    if (!keys.length) return '';
     return '<section class="block"><div class="sec-head"><h2>' + heading + '</h2></div>' + keys.map(function (k) {
       var x = map[k], share = main && cur[main] ? (x.v[main] || 0) / cur[main] * 100 : 0;
-      return '<div class="dist"><div class="dist-head"><span class="dist-name">' + esc(k) + '</span><span class="note">' + x.n + (x.n > 10 || x.n < 3 ? ' عملاً' : ' أعمال') + '</span><b class="tn">' + moneyLines(x.v) + '</b><span class="tn dist-pct">' + (main ? share.toFixed(0) + '%' : '') + '</span></div>' +
+      return '<div class="dist"><div class="dist-head"><span class="dist-name">' + esc(k) + '</span><b class="tn">' + moneyLines(x.v) + '</b><span class="tn dist-pct">' + (main ? share.toFixed(0) + '%' : '') + '</span></div>' +
         '<div class="rg-bar" aria-hidden="true"><i style="width:' + share.toFixed(1) + '%"></i></div></div>';
     }).join('') + '</section>';
   };
@@ -1040,7 +1042,7 @@ function renderWorks(d) {
     fig('الأقسام والشعب', Object.keys(bySec).length, '') + '<div class="fig"><div class="k">عرض</div><div class="v" style="font-size:1rem"><a class="btn ghost" href="#works/' + (done ? 'open' : 'done') + '">' + (done ? 'الأعمال غير المنتهية' : 'الأعمال المنتهية') + '</a></div></div></div></div></div>' +
     '<div class="wrap cols"><div><section class="block"><div class="sec-head"><h2>قائمة الأعمال</h2><span class="note">مرتبة من الأعلى قيمة</span></div>' +
       (rows ? '<div class="t-wrap"><table class="t cards"><thead><tr><th>العمل</th><th>القسم أو الشعبة</th><th>النوع</th>' + (done ? '' : '<th>الحالة</th>') + '<th class="n">القيمة المالية</th><th>العملة</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div class="note">لا توجد أعمال في هذه الفترة</div>') + '</section></div>' +
-    '<div>' + dist('توزيع القيمة حسب القسم أو الشعبة', bySec) + dist('توزيع القيمة حسب نوع العمل', byType) + '</div></div>';
+    '<div>' + dist('توزيع القيمة المالية حسب القسم أو الشعبة', bySec) + '</div></div>';
   document.getElementById('app').innerHTML = shell(d, 'overview', body);
   wire();
 }
