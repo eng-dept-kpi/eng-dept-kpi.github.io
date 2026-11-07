@@ -170,6 +170,15 @@ details.add-unit summary{list-style:none;display:inline-flex;cursor:pointer}deta
 .work-sum.two{grid-template-columns:repeat(2,minmax(0,1fr))}
 .money-h{font-size:.95rem;margin:.9rem 0 .2rem;color:var(--pri-2)}
 .row3.money{grid-template-columns:minmax(0,1fr) auto}
+.just-box p{margin:.6rem 0 0;line-height:1.9;font-size:1.02rem}
+.fld textarea{border:1px solid var(--line);border-radius:2px;padding:.6rem .7rem;font:inherit;background:var(--white);width:100%;line-height:1.8;resize:vertical}
+.fld textarea:focus{outline:2px solid #8a6a1f;outline-offset:1px;border-color:var(--pri)}
+a.row3.money{grid-template-columns:minmax(0,1fr) auto auto;text-decoration:none;color:inherit;align-items:center}
+a.row3.money:hover{background:var(--soft)}
+a.wlink{text-decoration:none;color:inherit;display:block}a.wlink:hover .v{text-decoration:underline}
+.dist{padding:.5rem 0;border-bottom:1px solid var(--hair)}
+.dist-head{display:grid;grid-template-columns:minmax(0,1fr) auto auto 3rem;gap:.6rem;align-items:baseline}
+.dist-name{font-weight:700}.dist-pct{color:var(--muted);text-align:left}
 .task-box{margin-top:1.2rem;border:1px solid var(--line);border-top:3px solid var(--brass);background:var(--white)}
 .task{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;padding:.8rem 1.1rem}
 .task+.task{border-top:1px solid var(--hair)}
@@ -439,6 +448,11 @@ function mixBlock(t) {
   return '<section class="block"><div class="sec-head"><h2>حالة المعاملات</h2>' + (t.cancelled ? '<span class="note">ملغى ' + fmt(t.cancelled) + '</span>' : '') + '</div><div class="seg">' + segs + '</div>' + rows + '</section>';
 }
 
+// The department's main justification for unfinished transactions (one text, set by the admin).
+function justificationBox(text, unfinished) {
+  if (!text) return '';
+  return '<section class="block just-box"><div class="sec-head"><h2>المبرر الرئيسي لعدم الإنجاز</h2>' + (unfinished ? '<span class="note">' + fmt(unfinished) + ' معاملة غير منجزة</span>' : '') + '</div><p>' + esc(text) + '</p></section>';
+}
 // Reasons grouped by who can act on them. Percentages are of all unfinished items.
 // opts.management: show the "what management can support" box (home page); opts.notes: section notes.
 function reasonsPanel(b, opts) {
@@ -475,10 +489,10 @@ function reasonsBlock(list, limit, notes, unfinished) {
 
 function worksBlock(t) {
   var open = t.ongoing + t.stopped + t.notStarted;
-  var money = function (label, m) { return Object.keys(m || {}).length ? '<div class="row3 money"><span>' + label + '</span><b class="tn">' + moneyLines(m) + '</b></div>' : ''; };
+  var money = function (label, m, key) { return Object.keys(m || {}).length ? '<a class="row3 money" href="#works/' + key + '"><span>' + label + '</span><b class="tn">' + moneyLines(m) + '</b><span class="chev">' + icon('chev', 14) + '</span></a>' : ''; };
   return '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2><span class="note">كما أفادت الأقسام والشعب</span></div><div class="work-sum two">' +
-    '<div><div class="v tn">' + fmt(t.finished) + '</div><div class="k">أعمال منتهية</div></div><div><div class="v tn">' + fmt(open) + '</div><div class="k">أعمال غير منتهية</div></div></div>' +
-    '<h3 class="money-h">القيمة المالية</h3>' + money('للأعمال المنتهية', t.valueDone) + money('للأعمال غير المنتهية', t.valueOpen) +
+    '<a href="#works/done" class="wlink"><div class="v tn">' + fmt(t.finished) + '</div><div class="k">أعمال منتهية</div></a><a href="#works/open" class="wlink"><div class="v tn">' + fmt(open) + '</div><div class="k">أعمال غير منتهية</div></a></div>' +
+    '<h3 class="money-h">القيمة المالية</h3>' + money('للأعمال المنتهية', t.valueDone, 'done') + money('للأعمال غير المنتهية', t.valueOpen, 'open') +
     (Object.keys(t.spent || {}).length > 1 ? '<p class="note">كل عملة محسوبة وحدها، دون تحويل بين العملات.</p>' : '') + '</section>';
 }
 
@@ -514,7 +528,7 @@ function renderOverview(d) {
       fig('أقسام وشعب رفعت البيانات', d.coverage.reported + ' <small>من ' + d.coverage.total + '</small>', d.coverage.partial ? d.coverage.partial + ' بشكل جزئي' : '') +
       fig('المعاملات الواردة', fmt(d.totals.received), compare) +
     '</div></div></div>' +
-    tasksBox(d) + '<div class="wrap cols"><div>' + unitsBlock(d) + '</div><div>' + mixBlock(d.totals) + reasonsPanel(d.breakdown, { management: true, top: 2 }) + worksBlock(d.fieldTotals) + '</div></div>';
+    tasksBox(d) + '<div class="wrap cols"><div>' + unitsBlock(d) + '</div><div>' + mixBlock(d.totals) + justificationBox(d.settings.mainJustification, d.totals.stuck + d.totals.inProgress) + worksBlock(d.fieldTotals) + '</div></div>';
   document.getElementById('app').innerHTML = shell(d, 'overview', body);
   wire();
   wireTasks(d);
@@ -580,13 +594,13 @@ function renderUnit(d) {
       fig('منجز ومحوّل', fmt(t.finished + t.transferred), 'منجز ' + fmt(t.finished) + ' · محوّل ' + fmt(t.transferred)) +
       fig('غير منتهٍ', fmt(t.stuck + t.inProgress), 'قيد التنفيذ ' + fmt(t.inProgress) + ' · عالق ' + fmt(t.stuck) + (t.stuck ? ' (محسوب في النتيجة)' : '')) +
     '</div></div></div>' + (state.flash ? '<div class="wrap no-print"><div class="card ok saved" role="status">' + esc(state.flash) + '</div></div>' : '') +
-    (!state.editing && d.canEdit && missing && !d.period.closed ? '<div class="wrap no-print"><section class="task-box"><div class="task"><div><b>لم تُدخل أرقام ' + esc(d.period.label) + ' بعد</b><span class="note">أدخل أرقام المؤشرات وأسباب غير المنتهي والأعمال الجديدة.</span></div><button class="btn" type="button" id="startEdit">إدخال الأرقام</button></div></section></div>' : '') +
+    (!state.editing && d.canEdit && missing && !d.period.closed ? '<div class="wrap no-print"><section class="task-box"><div class="task"><div><b>لم تُدخل أرقام ' + esc(d.period.label) + ' بعد</b><span class="note">أدخل أرقام المؤشرات والأعمال الجديدة.</span></div><button class="btn" type="button" id="startEdit">إدخال الأرقام</button></div></section></div>' : '') +
     (state.editing ? editForm(d) :
     '<div class="wrap cols"><div>' +
       '<section class="block"><div class="sec-head"><h2>المؤشرات</h2></div>' + kpiTable(d.kpis) + keyHtml({ on: Number(d.settings.onTrackMin), at: Number(d.settings.atRiskMin) }) + '</section>' +
       '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2><span class="note">عدد الأعمال ' + d.works.length + '، المنتهية منها ' + wt.finished + (Object.keys(wt.spent).length ? ' · القيمة المالية الإجمالية ' + moneyLines(wt.spent) : '') + '</span></div>' + worksTable(d.works) + '</section>' +
       '<section class="block"><div class="sec-head"><h2>المهام</h2></div>' + tasksTable(d.tasks) + '</section>' +
-    '</div><div>' + reasonsPanel(d.breakdown, { top: 6, notes: d.reasonNotes }) +
+    '</div><div>' + justificationBox(d.settings.mainJustification, d.unfinished) +
       '<section class="block"><div class="sec-head"><h2>السجل حسب الفترة</h2></div>' + historyTable(d.history) + '</section>' +
     '</div></div>');
   document.getElementById('app').innerHTML = shell(d, 'units', body);
@@ -613,7 +627,7 @@ function glossary() {
   return '<details class="glossary"><summary>ما معنى كل خانة؟</summary><dl>' + GLOSSARY.map(function (g) { return '<div><dt>' + g[0] + '</dt><dd>' + g[1] + '</dd></div>'; }).join('') +
     '<div><dt>القاعدة</dt><dd>المنجز + المحوّل + العالق + قيد التنفيذ + الملغى = الوارد.</dd></div></dl></details>';
 }
-var STEPS = [['1', 'الأرقام'], ['2', 'أسباب غير المنتهي'], ['3', 'الأعمال الميدانية']];
+var STEPS = [['1', 'الأرقام'], ['2', 'الأعمال الميدانية']];
 function stepBar() {
   return '<nav class="steps" aria-label="خطوات الإدخال">' + STEPS.map(function (s, i) {
     return '<button type="button" class="step-tab' + (i === 0 ? ' on' : '') + '" data-goto="' + s[0] + '"' + (i === 0 ? ' aria-current="step"' : '') + '><span class="num">' + s[0] + '</span>' + s[1] + '</button>';
@@ -651,7 +665,7 @@ function editForm(d) {
   var typeList = '<datalist id="workTypes">' + Object.keys(types).map(function (t) { return '<option value="' + esc(t) + '">'; }).join('') + '</datalist>';
   return '<div class="wrap narrow-block no-print"><form id="editForm" novalidate>' + stepBar() + '<div class="step" data-step="1">' + unitBlock +
     '<section class="block"><div class="sec-head"><h2>المؤشرات</h2><span class="note">اكتب أرقام كل مؤشر لهذه الفترة. اترك الصف فارغاً إذا لم تتوفر أرقامه.</span></div>' + glossary() + '<div class="t-wrap"><table class="t"><thead><tr><th>المؤشر</th>' + EDIT_FIELDS.map(function (f) { return '<th class="n">' + f[1] + '</th>'; }).join('') + '</tr></thead><tbody id="kpiBody">' + kpiRows + '</tbody></table></div>' + (N ? '<div class="form-actions"><button class="btn ghost" type="button" id="addKpiBtn">+ إضافة مؤشر</button><span class="note">مثلاً نوع طلب جديد. يمكن ترك أرقامه فارغة.</span></div>' : '') + '</section>' +
-    '</div><div class="step" data-step="2" hidden>' +
+    '</div><div class="step" data-step="9" hidden style="display:none">' +
     '<section class="block"><div class="sec-head"><h2>أسباب عدم الإنجاز</h2><span class="note" id="reasonCover" aria-live="polite"></span></div>' +
       '<p class="note">لكل معاملة غير منتهية (العالق وقيد التنفيذ) اختر سببها الرئيسي واكتب العدد بجانبه. السطر أعلاه يبيّن كم بقي دون سبب. ' + (N && reasonRows ? 'تغيير اسم سبب خاص يغيّره في كل الأقسام والشعب التي تستخدمه.' : '') + '</p>' +
       '<div class="t-wrap"><table class="t"><thead><tr><th>السبب</th><th class="n">العدد</th><th>ملاحظة</th></tr></thead><tbody>' + reasonRows +
@@ -659,7 +673,7 @@ function editForm(d) {
         return '<tr><td>' + esc(g.name) + '</td><td class="n" data-label="العدد">' + numInput('data-ureason="' + g.id + '" data-f="count"', g.name, g.count) + '</td>' +
           '<td' + (g.needsNote ? ' data-label="ملاحظة"' : '') + '>' + (g.needsNote ? txtInput('data-ureason="' + g.id + '" data-f="note" placeholder="' + esc(g.needsNote) + '"', 'ملاحظة: ' + g.needsNote, g.note, 'wide') : '') + '</td></tr>' + errRow('ur-' + g.id, 3);
       }).join('') + errRow('reasons', 3) + '</tbody></table></div></section>' +
-    '</div><div class="step" data-step="3" hidden>' +
+    '</div><div class="step" data-step="2" hidden>' +
     '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2><button class="btn ghost" type="button" id="addWorkBtn">+ إضافة عمل</button></div>' + typeList +
       '<p class="note">سجّل الأعمال الجديدة وحدّث حالة الأعمال الجارية. الأعمال المنتهية تبقى كما هي.</p>' +
       '<div class="t-wrap"><table class="t"><thead><tr><th>العمل</th><th>النوع</th><th>الموقع</th><th>الحالة</th><th>البدء</th><th>الانتهاء</th><th class="n">القيمة المالية</th><th>العملة</th>' + (N ? '<th>إزالة</th>' : '') + '</tr></thead><tbody id="workBody">' + workRows + '</tbody></table></div>' +
@@ -713,11 +727,11 @@ function wireEdit(d) {
   var form = document.getElementById('editForm'), msg = document.getElementById('formMsg');
   var stepNow = 1;
   function goStep(n) {
-    stepNow = Math.max(1, Math.min(3, n));
+    stepNow = Math.max(1, Math.min(STEPS.length, n));
     form.querySelectorAll('.step').forEach(function (s) { s.hidden = Number(s.dataset.step) !== stepNow; });
     form.querySelectorAll('.step-tab').forEach(function (t) { var on = Number(t.dataset.goto) === stepNow; t.classList.toggle('on', on); if (on) t.setAttribute('aria-current', 'step'); else t.removeAttribute('aria-current'); });
     document.getElementById('prevStep').hidden = stepNow === 1;
-    document.getElementById('nextStep').hidden = stepNow === 3;
+    document.getElementById('nextStep').hidden = stepNow === STEPS.length;
     form.scrollIntoView({ block: 'start' });
   }
   form.querySelectorAll('.step-tab').forEach(function (t) { t.onclick = function () { goStep(Number(t.dataset.goto)); }; });
@@ -773,7 +787,7 @@ function wireEdit(d) {
     var newWorks = vals(added).filter(function (w) { return ['title', 'type', 'location', 'startDate', 'endDate', 'spent'].some(function (f) { return String(w[f] || '').trim(); }); });
     if (removed.length && !window.confirm('سيُزال ' + removed.length + ' من الأعمال من الصفحة (يبقى محفوظاً في الأرشيف). هل تريد المتابعة؟')) { btn.disabled = false; return; }
     api('saveUnit', { id: d.unit.id, period: d.period.id, unit: unit, entries: vals(byKpi), works: vals(works), reasons: vals(reasons), newWorks: newWorks, removeWorks: removed,
-      unitReasons: (d.generalReasons || []).map(function (g) { var r = uReasons[g.id] || { categoryId: g.id }; r.version = g.version; return r; }),
+      unitReasons: [],
       newKpis: vals(newKpiRows).filter(function (k) { return Object.keys(k).some(function (f) { return f !== 'tmpId' && String(k[f] || '').trim(); }); }) }, function (res) {
       btn.disabled = false;
       if (!res.errors.length) { state.flash = 'حُفظت التعديلات (' + d.period.label + ').'; return done(); }
@@ -952,6 +966,10 @@ function renderPeriods(d) {
       (n.canOpen ? '<button class="btn" id="openBtn" type="button">فتح ' + esc(n.label) + '</button>' : '<span class="note">يمكن فتحه ابتداءً من <span class="ltr">' + esc(n.start) + '</span></span>') + '</div>' +
       '<p class="note">عند الفتح يظهر الشهر في قائمة الفترات أعلى كل صفحة' + (d.reminders.on ? '، وتصل رسالة بالبريد إلى رؤساء الأقسام ومحرري الشعب (' + d.recipients + ' مستخدم).' : '.') + ' الأعمال غير المنتهية من الفترات السابقة تظهر في الشهر الجديد لمتابعة حالتها.</p></section>' +
     '<section class="block"><div class="sec-head"><h2>جميع الفترات</h2></div><div class="t-wrap"><table class="t"><thead><tr><th>الفترة</th><th>الحالة</th><th class="n">أدخلت أرقامها</th><th>لم تُدخل بعد</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div></section>' +
+    '<section class="block"><form id="justForm" class="card" novalidate><h2>المبرر الرئيسي لعدم الإنجاز</h2>' +
+      '<p class="note">يظهر هذا النص في الصفحة الرئيسية وفي صفحة كل قسم وشعبة.</p>' +
+      '<div class="fld"><label for="justText">النص</label><textarea id="justText" rows="4" maxlength="800">' + esc(d.justification) + '</textarea></div>' +
+      '<div class="ferr" id="justMsg" role="alert"></div><div class="form-actions"><button class="btn" id="justBtn" type="submit">حفظ النص</button></div></form></section>' +
     '<section class="block"><form id="remForm" class="card" novalidate><h2>التذكير بالبريد</h2>' +
       '<label class="chk"><input type="checkbox" id="remOn"' + (d.reminders.on ? ' checked' : '') + '> إرسال التذكير</label>' +
       '<div class="fld"><label for="remDays">يُرسل التذكير بعد كم يوم من فتح الشهر، ويتكرر كل هذا العدد من الأيام حتى تُدخل الأرقام</label><input id="remDays" type="number" min="1" max="31" dir="ltr" value="' + d.reminders.days + '" style="max-width:8rem"></div>' +
@@ -976,6 +994,13 @@ function renderPeriods(d) {
       api('admin.setClosed', { id: p.id, closed: !p.closed }, function () { api('admin.periods', {}, renderPeriods, showError); }, function (e) { note(esc(e)); });
     };
   });
+  document.getElementById('justForm').onsubmit = function (ev) {
+    ev.preventDefault();
+    var b = document.getElementById('justBtn'), m = document.getElementById('justMsg'); busy(b, true); m.textContent = '';
+    api('admin.saveJustification', { text: val('justText') }, function () {
+      api('admin.periods', {}, function (dd) { renderPeriods(dd); note('تم حفظ نص المبرر.'); }, showError);
+    }, function (e) { busy(b, false); m.textContent = e; });
+  };
   document.getElementById('remForm').onsubmit = function (ev) {
     ev.preventDefault();
     var b = document.getElementById('remBtn'), m = document.getElementById('remMsg'); busy(b, true); m.textContent = '';
@@ -985,6 +1010,41 @@ function renderPeriods(d) {
   };
 }
 
+// Field works across all sections: distribution of the money by section and by type, then the full list.
+function renderWorks(d) {
+  var done = d.status === 'done', title = done ? 'الأعمال المنتهية' : 'الأعمال غير المنتهية';
+  var cur = {}, bySec = {}, byType = {};
+  d.works.forEach(function (w) {
+    var c = w.currency || '';
+    if (w.value !== null && c) cur[c] = (cur[c] || 0) + w.value;
+    var s = bySec[w.unit] = bySec[w.unit] || { n: 0, v: {} }; s.n++;
+    var t = byType[w.type || 'غير محدد'] = byType[w.type || 'غير محدد'] || { n: 0, v: {} }; t.n++;
+    if (w.value !== null && c) { s.v[c] = (s.v[c] || 0) + w.value; t.v[c] = (t.v[c] || 0) + w.value; }
+  });
+  var main = Object.keys(cur).sort(function (a, b) { return cur[b] - cur[a]; })[0];
+  var dist = function (heading, map) {
+    var keys = Object.keys(map).sort(function (a, b) { return (map[b].v[main] || 0) - (map[a].v[main] || 0) || map[b].n - map[a].n; });
+    return '<section class="block"><div class="sec-head"><h2>' + heading + '</h2></div>' + keys.map(function (k) {
+      var x = map[k], share = main && cur[main] ? (x.v[main] || 0) / cur[main] * 100 : 0;
+      return '<div class="dist"><div class="dist-head"><span class="dist-name">' + esc(k) + '</span><span class="note">' + x.n + (x.n > 10 || x.n < 3 ? ' عملاً' : ' أعمال') + '</span><b class="tn">' + moneyLines(x.v) + '</b><span class="tn dist-pct">' + (main ? share.toFixed(0) + '%' : '') + '</span></div>' +
+        '<div class="rg-bar" aria-hidden="true"><i style="width:' + share.toFixed(1) + '%"></i></div></div>';
+    }).join('') + '</section>';
+  };
+  var rows = d.works.slice().sort(function (a, b) { return (b.value || 0) - (a.value || 0); }).map(function (w) {
+    return '<tr><td>' + esc(w.title) + '</td><td data-label="القسم أو الشعبة"><a href="#unit/' + encodeURIComponent(w.unitId) + '">' + esc(w.unit) + '</a></td><td data-label="النوع">' + esc(w.type || '-') + '</td>' +
+      (done ? '' : '<td data-label="الحالة">' + esc(WORK_STATUS[w.status] || 'غير محددة') + '</td>') +
+      '<td class="n" data-label="القيمة المالية">' + (w.value === null ? '-' : fmt(Math.round(w.value))) + '</td><td data-label="العملة">' + (w.value === null ? '-' : esc(w.currency)) + '</td></tr>';
+  }).join('');
+  var body = '<div class="lead"><div class="wrap head"><div class="crumb"><a href="#">النظرة العامة</a> / ' + title + '</div><h1>' + title + '</h1><p class="lede">' + esc(d.period.label) + ' · كما أفادت الأقسام والشعب</p></div>' +
+    '<div class="figs"><div class="wrap">' + fig('عدد الأعمال', fmt(d.works.length), '') + fig('القيمة المالية', '<span style="font-size:.75em">' + moneyLines(cur) + '</span>', Object.keys(cur).length > 1 ? 'كل عملة وحدها' : '') +
+    fig('الأقسام والشعب', Object.keys(bySec).length, '') + '<div class="fig"><div class="k">عرض</div><div class="v" style="font-size:1rem"><a class="btn ghost" href="#works/' + (done ? 'open' : 'done') + '">' + (done ? 'الأعمال غير المنتهية' : 'الأعمال المنتهية') + '</a></div></div></div></div></div>' +
+    '<div class="wrap cols"><div><section class="block"><div class="sec-head"><h2>قائمة الأعمال</h2><span class="note">مرتبة من الأعلى قيمة</span></div>' +
+      (rows ? '<div class="t-wrap"><table class="t cards"><thead><tr><th>العمل</th><th>القسم أو الشعبة</th><th>النوع</th>' + (done ? '' : '<th>الحالة</th>') + '<th class="n">القيمة المالية</th><th>العملة</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div class="note">لا توجد أعمال في هذه الفترة</div>') + '</section></div>' +
+    '<div>' + dist('توزيع القيمة حسب القسم أو الشعبة', bySec) + dist('توزيع القيمة حسب نوع العمل', byType) + '</div></div>';
+  document.getElementById('app').innerHTML = shell(d, 'overview', body);
+  wire();
+}
+
 function route() {
   var h = location.hash.replace(/^#/, '');
   var m = /^unit\/(.+)$/.exec(h);
@@ -992,6 +1052,8 @@ function route() {
   if (h === 'account') return api('me', {}, renderAccount, showError);
   if (h === 'users') return api('admin.users', {}, renderUsers, showError);
   if (h === 'periods') return api('admin.periods', {}, renderPeriods, showError);
+  var wm = /^works\/(done|open)$/.exec(h);
+  if (wm) return api('works', { status: wm[1], period: state.period }, function (d) { state.period = d.period.id; renderWorks(d); }, showError);
   if (m) return api('unit', { id: decodeURIComponent(m[1]), period: state.period }, function (d) { state.period = d.period.id; renderUnit(d); }, showError);
   api('dashboard', { period: state.period }, function (d) { state.period = d.period.id; (h === 'units' ? renderUnits : renderOverview)(d); }, showError);
 }
