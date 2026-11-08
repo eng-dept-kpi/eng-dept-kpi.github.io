@@ -340,7 +340,7 @@ var ICONS = {
 };
 var MIX = [
   { key: 'finished', label: 'منجز', color: 'var(--c-finished)' },
-  { key: 'transferred', label: 'محوّل', color: 'var(--c-transferred)' },
+  { key: 'transferred', label: 'محوّل (منجزة)', color: 'var(--c-transferred)' },
   { key: 'stuck', label: 'عالق بانتظار المواطن (منجزة)', color: 'var(--c-stuck)' },
   { key: 'inProgress', label: 'قيد التنفيذ', color: 'var(--c-progress)' }
 ];
@@ -432,7 +432,7 @@ function keyHtml(s) {
     '<span>' + pill('at_risk') + 'من ' + s.at + '% إلى أقل من ' + s.on + '%</span>' +
     '<span>' + pill('behind') + 'أقل من ' + s.at + '%</span>' +
     '<span>' + pill('none') + 'لم تُدخل بيانات هذه الفترة</span></div>' +
-    '<div class="formula"><b>النتيجة</b> = (منجز + محوّل + عالق) ÷ (الوارد − الملغى). <b>عالق (منجزة)</b>: أنهى القسم أو الشعبة دوره فيها وهي بانتظار المواطن (أوراق أو رسوم أو معلومات)، لذلك تُحسب منجزة في النتيجة.</div>';
+    '<div class="formula"><b>النتيجة</b> = (منجز + محوّل + عالق) ÷ (الوارد − الملغى). <b>محوّل (منجزة)</b>: أنهى القسم أو الشعبة دوره فيها وحوّلها إلى الجهة التالية في مسارها (قسم أو دائرة أخرى أو لجنة أو جهة خارجية) لاستكمالها، لذلك تُحسب منجزة. <b>عالق (منجزة)</b>: أنهى القسم أو الشعبة دوره فيها وهي بانتظار المواطن (أوراق أو رسوم أو معلومات)، لذلك تُحسب منجزة في النتيجة.</div>';
 }
 
 function unitsBlock(d) {
@@ -446,7 +446,7 @@ function unitsBlock(d) {
 function mixBlock(t) {
   var net = MIX.reduce(function (s, m) { return s + t[m.key]; }, 0);
   var segs = MIX.map(function (m) { return t[m.key] ? '<div style="flex:' + t[m.key] + ' 1 0;background:' + m.color + '" data-tip="' + esc(m.label + ': ' + fmt(t[m.key])) + '"></div>' : ''; }).join('');
-  var rows = MIX.map(function (m) { return '<div class="row3"><span><i class="dot" style="background:' + m.color + '"></i>' + m.label + '</span><b class="tn">' + fmt(t[m.key]) + '</b><span class="tn">' + (net ? (t[m.key] / net * 100).toFixed(0) : 0) + '%</span></div>'; }).join('') + (t.stuck ? '<p class="def">المعاملة العالقة: أنهى القسم أو الشعبة دوره فيها وهي بانتظار المواطن (أوراق أو رسوم أو معلومات)، لذلك تُحسب منجزة في النتيجة.</p>' : '');
+  var rows = MIX.map(function (m) { return '<div class="row3"><span><i class="dot" style="background:' + m.color + '"></i>' + m.label + '</span><b class="tn">' + fmt(t[m.key]) + '</b><span class="tn">' + (net ? (t[m.key] / net * 100).toFixed(0) : 0) + '%</span></div>'; }).join('') + (t.transferred ? '<p class="def">المعاملة المحوّلة: أنهى القسم أو الشعبة دوره فيها وحوّلها إلى الجهة التالية في مسارها (قسم أو دائرة أخرى أو لجنة أو جهة خارجية) لاستكمالها، لذلك تُحسب منجزة.</p>' : '') + (t.stuck ? '<p class="def">المعاملة العالقة: أنهى القسم أو الشعبة دوره فيها وهي بانتظار المواطن (أوراق أو رسوم أو معلومات)، لذلك تُحسب منجزة في النتيجة.</p>' : '');
   return '<section class="block"><div class="sec-head"><h2>حالة المعاملات</h2>' + (t.cancelled ? '<span class="note">ملغى ' + fmt(t.cancelled) + '</span>' : '') + '</div><div class="seg">' + segs + '</div>' + rows + '</section>';
 }
 
@@ -562,9 +562,9 @@ function kpiTable(kpis) {
   var rows = kpis.map(function (r) {
     var e = r.entry;
     if (!e) return '<tr><td>' + esc(r.name) + '</td><td colspan="6" class="note">لم ترفع البيانات لهذا المؤشر</td><td>' + pill('none') + '</td></tr>';
-    return '<tr><td>' + esc(r.name) + '</td><td class="n" data-label="الوارد">' + fmt(e.received) + '</td><td class="n" data-label="منجز">' + fmt(e.finished) + '</td><td class="n" data-label="محوّل">' + fmt(e.transferred) + '</td><td class="n" data-label="عالق (منجزة)">' + fmt(e.stuck) + '</td><td class="n" data-label="قيد التنفيذ">' + fmt(e.inProgress) + '</td><td class="n" data-label="النتيجة"><b>' + pct(r.score) + '</b></td><td data-label="الحالة">' + pill(r.status) + '</td></tr>';
+    return '<tr><td>' + esc(r.name) + '</td><td class="n" data-label="الوارد">' + fmt(e.received) + '</td><td class="n" data-label="منجز">' + fmt(e.finished) + '</td><td class="n" data-label="محوّل (منجزة)">' + fmt(e.transferred) + '</td><td class="n" data-label="عالق (منجزة)">' + fmt(e.stuck) + '</td><td class="n" data-label="قيد التنفيذ">' + fmt(e.inProgress) + '</td><td class="n" data-label="النتيجة"><b>' + pct(r.score) + '</b></td><td data-label="الحالة">' + pill(r.status) + '</td></tr>';
   }).join('');
-  return '<div class="t-wrap"><table class="t cards"><thead><tr><th>المؤشر</th><th class="n">الوارد</th><th class="n">منجز</th><th class="n">محوّل</th><th class="n">عالق (منجزة)</th><th class="n">قيد التنفيذ</th><th class="n">النتيجة</th><th>الحالة</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  return '<div class="t-wrap"><table class="t cards"><thead><tr><th>المؤشر</th><th class="n">الوارد</th><th class="n">منجز</th><th class="n">محوّل (منجزة)</th><th class="n">عالق (منجزة)</th><th class="n">قيد التنفيذ</th><th class="n">النتيجة</th><th>الحالة</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
 
 function worksTable(works) {
@@ -624,7 +624,7 @@ function renderUnit(d) {
 var GLOSSARY = [
   ['الوارد', 'كل المعاملات أو الطلبات التي وصلت خلال الفترة.'],
   ['منجز', 'انتهى العمل عليها.'],
-  ['محوّل', 'أنهى القسم دوره فيها وحوّلها إلى جهة أخرى.'],
+  ['محوّل (منجزة)', 'أنهى القسم دوره فيها وحوّلها إلى الجهة التالية في مسارها (قسم أو دائرة أخرى أو لجنة أو جهة خارجية) لاستكمالها.'],
   ['عالق (منجزة)', 'أنهى القسم دوره وينتظر المواطن (أوراق أو رسوم أو معلومات). يُحسب ضمن النتيجة.'],
   ['قيد التنفيذ', 'ما زال العمل عليها جارياً لدى القسم.'],
   ['ملغى', 'أُلغيت، ولا تدخل في حساب النتيجة.']
@@ -641,7 +641,7 @@ function stepBar() {
 }
 // Every name and number on a unit's page can be corrected here. The server checks everything before anything is saved.
 // Names and wording are editable by the admin only; section heads and division editors enter numbers.
-var EDIT_FIELDS = [['received', 'الوارد'], ['finished', 'منجز'], ['transferred', 'محوّل'], ['stuck', 'عالق (منجزة)'], ['inProgress', 'قيد التنفيذ'], ['cancelled', 'ملغى']];
+var EDIT_FIELDS = [['received', 'الوارد'], ['finished', 'منجز'], ['transferred', 'محوّل (منجزة)'], ['stuck', 'عالق (منجزة)'], ['inProgress', 'قيد التنفيذ'], ['cancelled', 'ملغى']];
 function numInput(attrs, label, value, decimal) { return '<input class="num" type="number" min="0" ' + (decimal ? 'step="any" inputmode="decimal"' : 'step="1" inputmode="numeric"') + ' ' + attrs + ' aria-label="' + esc(label) + '" value="' + esc(value === null || value === undefined ? '' : value) + '">'; }
 function txtInput(attrs, label, value, cls) { return '<input class="txt ' + (cls || '') + '" type="text" maxlength="200" ' + attrs + ' aria-label="' + esc(label) + '" value="' + esc(value === null || value === undefined ? '' : value) + '">'; }
 function errRow(id, span) { return '<tr class="err-row" data-err="' + esc(id) + '" hidden><td colspan="' + span + '" class="ferr"></td></tr>'; }
