@@ -180,6 +180,7 @@ a.wlink{text-decoration:none;color:inherit;display:block}a.wlink:hover .v{text-d
 .dist{padding:.5rem 0;border-bottom:1px solid var(--hair)}
 .dist-head{display:grid;grid-template-columns:minmax(0,1fr) auto 3rem;gap:.6rem;align-items:baseline}
 .dist-name{font-weight:700}.dist-pct{color:var(--muted);text-align:left}
+.def{margin:.6rem 0 0;font-size:.88rem;color:var(--muted);line-height:1.7}
 .task-box{margin-top:1.2rem;border:1px solid var(--line);border-top:3px solid var(--brass);background:var(--white)}
 .task{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;padding:.8rem 1.1rem}
 .task+.task{border-top:1px solid var(--hair)}
@@ -340,7 +341,7 @@ var ICONS = {
 var MIX = [
   { key: 'finished', label: 'منجز', color: 'var(--c-finished)' },
   { key: 'transferred', label: 'محوّل', color: 'var(--c-transferred)' },
-  { key: 'stuck', label: 'عالق بانتظار المواطن', color: 'var(--c-stuck)' },
+  { key: 'stuck', label: 'عالق بانتظار المواطن (منجزة)', color: 'var(--c-stuck)' },
   { key: 'inProgress', label: 'قيد التنفيذ', color: 'var(--c-progress)' }
 ];
 var state = { period: null, editing: false };
@@ -431,7 +432,7 @@ function keyHtml(s) {
     '<span>' + pill('at_risk') + 'من ' + s.at + '% إلى أقل من ' + s.on + '%</span>' +
     '<span>' + pill('behind') + 'أقل من ' + s.at + '%</span>' +
     '<span>' + pill('none') + 'لم تُدخل بيانات هذه الفترة</span></div>' +
-    '<div class="formula"><b>النتيجة</b> = (منجز + محوّل + عالق) ÷ (الوارد − الملغى). <b>عالق</b>: أنجز القسم أو الشعبة الدور المطلوب وبانتظار المواطن.</div>';
+    '<div class="formula"><b>النتيجة</b> = (منجز + محوّل + عالق) ÷ (الوارد − الملغى). <b>عالق (منجزة)</b>: أنهى القسم أو الشعبة دوره فيها وهي بانتظار المواطن (أوراق أو رسوم أو معلومات)، لذلك تُحسب منجزة في النتيجة.</div>';
 }
 
 function unitsBlock(d) {
@@ -445,7 +446,7 @@ function unitsBlock(d) {
 function mixBlock(t) {
   var net = MIX.reduce(function (s, m) { return s + t[m.key]; }, 0);
   var segs = MIX.map(function (m) { return t[m.key] ? '<div style="flex:' + t[m.key] + ' 1 0;background:' + m.color + '" data-tip="' + esc(m.label + ': ' + fmt(t[m.key])) + '"></div>' : ''; }).join('');
-  var rows = MIX.map(function (m) { return '<div class="row3"><span><i class="dot" style="background:' + m.color + '"></i>' + m.label + '</span><b class="tn">' + fmt(t[m.key]) + '</b><span class="tn">' + (net ? (t[m.key] / net * 100).toFixed(0) : 0) + '%</span></div>'; }).join('');
+  var rows = MIX.map(function (m) { return '<div class="row3"><span><i class="dot" style="background:' + m.color + '"></i>' + m.label + '</span><b class="tn">' + fmt(t[m.key]) + '</b><span class="tn">' + (net ? (t[m.key] / net * 100).toFixed(0) : 0) + '%</span></div>'; }).join('') + (t.stuck ? '<p class="def">المعاملة العالقة: أنهى القسم أو الشعبة دوره فيها وهي بانتظار المواطن (أوراق أو رسوم أو معلومات)، لذلك تُحسب منجزة في النتيجة.</p>' : '');
   return '<section class="block"><div class="sec-head"><h2>حالة المعاملات</h2>' + (t.cancelled ? '<span class="note">ملغى ' + fmt(t.cancelled) + '</span>' : '') + '</div><div class="seg">' + segs + '</div>' + rows + '</section>';
 }
 
@@ -533,7 +534,7 @@ function renderOverview(d) {
       fig('أقسام وشعب رفعت البيانات', d.coverage.reported + ' <small>من ' + d.coverage.total + '</small>', d.coverage.partial ? d.coverage.partial + ' بشكل جزئي' : '') +
       fig('المعاملات الواردة', fmt(d.totals.received), compare) +
     '</div></div></div>' +
-    tasksBox(d) + '<div class="wrap cols"><div>' + unitsBlock(d) + '</div><div>' + mixBlock(d.totals) + justificationBox(d.settings.mainJustification, d.totals.stuck + d.totals.inProgress) + worksBlock(d.fieldTotals) + '</div></div>';
+    tasksBox(d) + '<div class="wrap cols"><div>' + unitsBlock(d) + '</div><div>' + mixBlock(d.totals) + justificationBox(d.settings.mainJustification, d.totals.inProgress) + worksBlock(d.fieldTotals) + '</div></div>';
   document.getElementById('app').innerHTML = shell(d, 'overview', body);
   wire();
   wireTasks(d);
@@ -561,9 +562,9 @@ function kpiTable(kpis) {
   var rows = kpis.map(function (r) {
     var e = r.entry;
     if (!e) return '<tr><td>' + esc(r.name) + '</td><td colspan="6" class="note">لم ترفع البيانات لهذا المؤشر</td><td>' + pill('none') + '</td></tr>';
-    return '<tr><td>' + esc(r.name) + '</td><td class="n" data-label="الوارد">' + fmt(e.received) + '</td><td class="n" data-label="منجز">' + fmt(e.finished) + '</td><td class="n" data-label="محوّل">' + fmt(e.transferred) + '</td><td class="n" data-label="عالق">' + fmt(e.stuck) + '</td><td class="n" data-label="قيد التنفيذ">' + fmt(e.inProgress) + '</td><td class="n" data-label="النتيجة"><b>' + pct(r.score) + '</b></td><td data-label="الحالة">' + pill(r.status) + '</td></tr>';
+    return '<tr><td>' + esc(r.name) + '</td><td class="n" data-label="الوارد">' + fmt(e.received) + '</td><td class="n" data-label="منجز">' + fmt(e.finished) + '</td><td class="n" data-label="محوّل">' + fmt(e.transferred) + '</td><td class="n" data-label="عالق (منجزة)">' + fmt(e.stuck) + '</td><td class="n" data-label="قيد التنفيذ">' + fmt(e.inProgress) + '</td><td class="n" data-label="النتيجة"><b>' + pct(r.score) + '</b></td><td data-label="الحالة">' + pill(r.status) + '</td></tr>';
   }).join('');
-  return '<div class="t-wrap"><table class="t cards"><thead><tr><th>المؤشر</th><th class="n">الوارد</th><th class="n">منجز</th><th class="n">محوّل</th><th class="n">عالق</th><th class="n">قيد التنفيذ</th><th class="n">النتيجة</th><th>الحالة</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  return '<div class="t-wrap"><table class="t cards"><thead><tr><th>المؤشر</th><th class="n">الوارد</th><th class="n">منجز</th><th class="n">محوّل</th><th class="n">عالق (منجزة)</th><th class="n">قيد التنفيذ</th><th class="n">النتيجة</th><th>الحالة</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
 
 function worksTable(works) {
@@ -596,8 +597,8 @@ function renderUnit(d) {
     '<div class="figs"><div class="wrap">' +
       fig('النتيجة', '<span class="ltr">' + pct(u.score) + '</span>', pill(missing ? 'none' : u.status)) +
       fig('الوارد', fmt(t.received), t.cancelled ? 'ملغى ' + fmt(t.cancelled) : '') +
-      fig('منجز ومحوّل', fmt(t.finished + t.transferred), 'منجز ' + fmt(t.finished) + ' · محوّل ' + fmt(t.transferred)) +
-      fig('غير منتهٍ', fmt(t.stuck + t.inProgress), 'قيد التنفيذ ' + fmt(t.inProgress) + ' · عالق ' + fmt(t.stuck) + (t.stuck ? ' (محسوب في النتيجة)' : '')) +
+      fig('منجزة', fmt(t.finished + t.transferred + t.stuck), 'منجز ' + fmt(t.finished) + ' · محوّل ' + fmt(t.transferred) + ' · عالق ' + fmt(t.stuck)) +
+      fig('قيد التنفيذ', fmt(t.inProgress), 'لم تنتهِ بعد لدى القسم أو الشعبة') +
     '</div></div></div>' + (state.flash ? '<div class="wrap no-print"><div class="card ok saved" role="status">' + esc(state.flash) + '</div></div>' : '') +
     (!state.editing && d.canEdit && missing && !d.period.closed ? '<div class="wrap no-print"><section class="task-box"><div class="task"><div><b>لم تُدخل أرقام ' + esc(d.period.label) + ' بعد</b><span class="note">أدخل أرقام المؤشرات والأعمال الجديدة.</span></div><button class="btn" type="button" id="startEdit">إدخال الأرقام</button></div></section></div>' : '') +
     (state.editing ? editForm(d) :
@@ -605,7 +606,7 @@ function renderUnit(d) {
       '<section class="block"><div class="sec-head"><h2>المؤشرات</h2></div>' + kpiTable(d.kpis) + keyHtml({ on: Number(d.settings.onTrackMin), at: Number(d.settings.atRiskMin) }) + '</section>' +
       '<section class="block"><div class="sec-head"><h2>الأعمال الميدانية</h2><span class="note">عدد الأعمال ' + d.works.length + '، المنتهية منها ' + wt.finished + (Object.keys(wt.spent).length ? ' · القيمة المالية الإجمالية ' + moneyLines(wt.spent) : '') + '</span></div>' + worksTable(d.works) + '</section>' +
       '<section class="block"><div class="sec-head"><h2>المهام</h2></div>' + tasksTable(d.tasks) + '</section>' +
-    '</div><div>' + justificationBox(d.settings.mainJustification, d.unfinished) +
+    '</div><div>' + justificationBox(d.settings.mainJustification, d.unit.totals.inProgress) +
       '<section class="block"><div class="sec-head"><h2>السجل حسب الفترة</h2></div>' + historyTable(d.history) + '</section>' +
     '</div></div>');
   document.getElementById('app').innerHTML = shell(d, 'units', body);
@@ -624,7 +625,7 @@ var GLOSSARY = [
   ['الوارد', 'كل المعاملات أو الطلبات التي وصلت خلال الفترة.'],
   ['منجز', 'انتهى العمل عليها.'],
   ['محوّل', 'أنهى القسم دوره فيها وحوّلها إلى جهة أخرى.'],
-  ['عالق', 'أنهى القسم دوره وينتظر المواطن (أوراق أو رسوم أو معلومات). يُحسب ضمن النتيجة.'],
+  ['عالق (منجزة)', 'أنهى القسم دوره وينتظر المواطن (أوراق أو رسوم أو معلومات). يُحسب ضمن النتيجة.'],
   ['قيد التنفيذ', 'ما زال العمل عليها جارياً لدى القسم.'],
   ['ملغى', 'أُلغيت، ولا تدخل في حساب النتيجة.']
 ];
@@ -640,7 +641,7 @@ function stepBar() {
 }
 // Every name and number on a unit's page can be corrected here. The server checks everything before anything is saved.
 // Names and wording are editable by the admin only; section heads and division editors enter numbers.
-var EDIT_FIELDS = [['received', 'الوارد'], ['finished', 'منجز'], ['transferred', 'محوّل'], ['stuck', 'عالق'], ['inProgress', 'قيد التنفيذ'], ['cancelled', 'ملغى']];
+var EDIT_FIELDS = [['received', 'الوارد'], ['finished', 'منجز'], ['transferred', 'محوّل'], ['stuck', 'عالق (منجزة)'], ['inProgress', 'قيد التنفيذ'], ['cancelled', 'ملغى']];
 function numInput(attrs, label, value, decimal) { return '<input class="num" type="number" min="0" ' + (decimal ? 'step="any" inputmode="decimal"' : 'step="1" inputmode="numeric"') + ' ' + attrs + ' aria-label="' + esc(label) + '" value="' + esc(value === null || value === undefined ? '' : value) + '">'; }
 function txtInput(attrs, label, value, cls) { return '<input class="txt ' + (cls || '') + '" type="text" maxlength="200" ' + attrs + ' aria-label="' + esc(label) + '" value="' + esc(value === null || value === undefined ? '' : value) + '">'; }
 function errRow(id, span) { return '<tr class="err-row" data-err="' + esc(id) + '" hidden><td colspan="' + span + '" class="ferr"></td></tr>'; }
