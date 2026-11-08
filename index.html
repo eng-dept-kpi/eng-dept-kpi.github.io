@@ -170,6 +170,7 @@ details.add-unit summary{list-style:none;display:inline-flex;cursor:pointer}deta
 .work-sum.two{grid-template-columns:repeat(2,minmax(0,1fr))}
 .money-h{font-size:.95rem;margin:.9rem 0 .2rem;color:var(--pri-2)}
 .row3.money{grid-template-columns:minmax(0,1fr) auto}
+.just-box ul{margin:.5rem 0 0;padding-inline-start:1.3rem;line-height:1.9;font-size:1.02rem}.just-box li{margin:.25rem 0}
 .just-box p{margin:.6rem 0 0;line-height:1.9;font-size:1.02rem}
 .fld textarea{border:1px solid var(--line);border-radius:2px;padding:.6rem .7rem;font:inherit;background:var(--white);width:100%;line-height:1.8;resize:vertical}
 .fld textarea:focus{outline:2px solid #8a6a1f;outline-offset:1px;border-color:var(--pri)}
@@ -451,7 +452,11 @@ function mixBlock(t) {
 // The department's main justification for unfinished transactions (one text, set by the admin).
 function justificationBox(text, unfinished) {
   if (!text) return '';
-  return '<section class="block just-box"><div class="sec-head"><h2>المبرر الرئيسي لعدم الإنجاز</h2>' + (unfinished ? '<span class="note">' + fmt(unfinished) + ' معاملة غير منجزة</span>' : '') + '</div><p>' + esc(text) + '</p></section>';
+  var lines = String(text).split(/\n/), html = '', list = [];
+  var flush = function () { if (list.length) { html += '<ul>' + list.map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>'; list = []; } };
+  lines.forEach(function (l) { l = l.trim(); if (!l) return; if (/^[-•]/.test(l)) list.push(l.replace(/^[-•]\s*/, '')); else { flush(); html += '<p>' + esc(l) + '</p>'; } });
+  flush();
+  return '<section class="block just-box"><div class="sec-head"><h2>المبرر الرئيسي لعدم الإنجاز</h2>' + (unfinished ? '<span class="note">' + fmt(unfinished) + ' معاملة غير منجزة</span>' : '') + '</div>' + html + '</section>';
 }
 // Reasons grouped by who can act on them. Percentages are of all unfinished items.
 // opts.management: show the "what management can support" box (home page); opts.notes: section notes.
@@ -967,8 +972,8 @@ function renderPeriods(d) {
       '<p class="note">عند الفتح يظهر الشهر في قائمة الفترات أعلى كل صفحة' + (d.reminders.on ? '، وتصل رسالة بالبريد إلى رؤساء الأقسام ومحرري الشعب (' + d.recipients + ' مستخدم).' : '.') + ' الأعمال غير المنتهية من الفترات السابقة تظهر في الشهر الجديد لمتابعة حالتها.</p></section>' +
     '<section class="block"><div class="sec-head"><h2>جميع الفترات</h2></div><div class="t-wrap"><table class="t"><thead><tr><th>الفترة</th><th>الحالة</th><th class="n">أدخلت أرقامها</th><th>لم تُدخل بعد</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div></section>' +
     '<section class="block"><form id="justForm" class="card" novalidate><h2>المبرر الرئيسي لعدم الإنجاز</h2>' +
-      '<p class="note">يظهر هذا النص في الصفحة الرئيسية وفي صفحة كل قسم وشعبة.</p>' +
-      '<div class="fld"><label for="justText">النص</label><textarea id="justText" rows="4" maxlength="800">' + esc(d.justification) + '</textarea></div>' +
+      '<p class="note">يظهر هذا النص في الصفحة الرئيسية وفي صفحة كل قسم وشعبة. كل سطر يبدأ بشَرطة (-) يظهر كنقطة في قائمة.</p>' +
+      '<div class="fld"><label for="justText">النص</label><textarea id="justText" rows="6" maxlength="800">' + esc(d.justification) + '</textarea></div>' +
       '<div class="ferr" id="justMsg" role="alert"></div><div class="form-actions"><button class="btn" id="justBtn" type="submit">حفظ النص</button></div></form></section>' +
     '<section class="block"><form id="remForm" class="card" novalidate><h2>التذكير بالبريد</h2>' +
       '<label class="chk"><input type="checkbox" id="remOn"' + (d.reminders.on ? ' checked' : '') + '> إرسال التذكير</label>' +
